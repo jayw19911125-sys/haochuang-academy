@@ -97,6 +97,17 @@ export const chapters: ChapterContent[] = [
     audience: "全員必讀",
     sections: [
       {
+        id: "ch2-s0",
+        title: "核心知識點心智圖",
+        type: "image",
+        content: "好創統一新人教學系統的完整知識架構，涵蓋 5 大知識維度、從企劃到剪輯到 AI 自動化的全局地圖：",
+        imageData: {
+          url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663065041882/AXapHhDJFofYFuSSWpHADU/mindmap_core_knowledge-YRyaJmr5ftrH4N9HwhumuF.png",
+          alt: "好創統一新人教學系統 v3.0 核心知識點心智圖",
+          caption: "好創統一新人教學系統 v3.0 — 5 大知識維度·放射狀有機結構"
+        }
+      },
+      {
         id: "ch2-s1",
         title: "四個學習階段",
         type: "steps",
