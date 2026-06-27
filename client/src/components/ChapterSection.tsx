@@ -2,6 +2,8 @@ import { useRef, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Copy, Check, ChevronDown } from "lucide-react";
 import type { ChapterContent, Section } from "@/lib/data";
+import MermaidDiagram from "./MermaidDiagram";
+import { HighlightsGrid, Notes, Expandables } from "./SectionEnhancements";
 
 interface ChapterSectionProps {
   chapter: ChapterContent;
@@ -90,12 +92,25 @@ function SectionRenderer({ section, delay }: { section: Section; delay: number }
         </div>
       )}
 
+      {/* 高亮數據 */}
+      {(section as any).highlights && <HighlightsGrid highlights={(section as any).highlights} />}
+      
+      {/* 圖表 */}
+      {(section as any).diagram && <MermaidDiagram code={(section as any).diagram.code} title={(section as any).diagram.title} description={(section as any).diagram.description} />}
+      
+      {/* 現有類型 */}
       {section.type === "table" && section.tableData && <TableBlock data={section.tableData} />}
       {section.type === "comparison" && section.tableData && <TableBlock data={section.tableData} />}
       {section.type === "prompt" && section.promptData && <PromptBlock data={section.promptData} />}
       {section.type === "steps" && section.steps && <StepsBlock steps={section.steps} />}
       {section.type === "flipcard" && section.flipCards && <FlipCardBlock cards={section.flipCards} />}
       {section.type === "checklist" && section.checklistItems && <ChecklistBlock items={section.checklistItems} />}
+      
+      {/* 備註 */}
+      {(section as any).notes && <Notes notes={(section as any).notes} />}
+      
+      {/* 可展開詳情 */}
+      {(section as any).expandable && <Expandables items={(section as any).expandable} />}
     </motion.div>
   );
 }
