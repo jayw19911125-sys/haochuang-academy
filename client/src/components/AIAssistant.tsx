@@ -1,128 +1,148 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, Send, Bot, User, Sparkles, ChevronDown, Lightbulb } from "lucide-react";
-
-interface QAPair {
-  question: string;
-  answer: string;
-}
+import { Bot, Send, X, MessageCircle, Copy, CheckCircle2, Film, Sparkles } from "lucide-react";
 
 interface AIAssistantProps {
   chapterId: string;
   chapterTitle: string;
 }
 
-// 每章的預設問答庫
-const chapterFAQs: Record<string, QAPair[]> = {
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+}
+
+// 每章的 FAQ 知識庫
+const chapterFAQs: Record<string, { q: string; a: string }[]> = {
   ch1: [
-    { question: "產能防禦機制具體怎麼計算？", answer: "以現有 4 人核心團隊（CEO + COO + 剪輯師 + 企劃）的實際工時為基準。每人每月可用工時約 160 小時，扣除會議、行政、培訓後，實際產出工時約 120 小時/人。4 人 = 480 小時/月。每個標準方案客戶約需 40-60 小時/月，所以最大承載量約 8-12 個標準方案客戶。超過就必須拒絕或外包。" },
-    { question: "為什麼要先收錢才開工？", answer: "三個原因：(1) 現金流保護 — 小團隊沒有資本墊付，一旦客戶拖款就會影響營運。(2) 篩選客戶 — 願意先付款的客戶通常更認真、配合度更高。(3) 心理承諾 — 付了錢的客戶會更積極配合，減少來回修改的時間成本。" },
-    { question: "Monday.com 和 Slack 怎麼分工？", answer: "Monday.com = 數據庫（存資料、追進度、管流程）。Slack = 通知器（即時溝通、自動提醒、快速決策）。簡單記法：要「找資料」去 Monday，要「講話」去 Slack。絕對不要在 Slack 裡存重要資料，也不要在 Monday 裡聊天。" }
+    { q: "好創的收款鐵則是什麼？", a: "先收錢才開工，沒有例外。社群類專案：執行前收當月全款。網站專案：收 50% 訂金開工，驗收無誤收 50% 尾款。混合專案：按項目拆分。" },
+    { q: "產能防禦機制怎麼運作？", a: "所有專案排程、產出量、定價推演，強制以「4 人核心團隊」現有承載力為計算底層。超出產能時必須拒絕或外包，絕不降低品質或假設擴張。" },
+    { q: "好創的工具棧有哪些？", a: "Monday.com（CRM/專案/SOP 數據庫）、Slack（溝通/通知器）、Notion（知識庫）、Google Drive（檔案）、GitHub（全局知識地圖）、Manus（AI 自動化）。" },
+    { q: "好創的核心服務有哪些？", a: "網站架設、SEO/AIO/GEO、短影音、商業攝影、廣告投放、品牌視覺、社群行銷。高階形象影片非主力，大型案採統包整合逐案拆帳。" }
   ],
   ch2: [
-    { question: "心智圖怎麼用來學習？", answer: "心智圖是「全景地圖」，不是「學習教材」。用法：(1) 先看心智圖了解整體結構，知道有哪些知識點。(2) 再逐章深入學習每個分支的細節。(3) 學完後回來看心智圖，確認自己是否覆蓋了所有知識點。(4) 用心智圖做自我評估 — 哪些分支你已經掌握，哪些還需要加強。" },
-    { question: "5 大知識維度的學習順序是什麼？", answer: "建議順序：(1) 企劃職位教學（基礎）→ (2) 剪輯師完整教學（技術）→ (3) 短影音代操產業知識（商業）→ (4) AI Prompt 兵器庫（效率）→ (5) Manus 自動化工作流（進階）。前三個是「必修」，後兩個是「選修但強烈建議」。" },
-    { question: "新人應該先學哪個？", answer: "看你的職位：企劃 → 從第一維度開始。剪輯師 → 從第二維度開始。但無論什麼職位，第一章「好創營運底層邏輯」都是必讀的，因為你需要理解公司怎麼運作。" }
+    { q: "心智圖怎麼使用？", a: "先看全景了解 5 大維度 → 逐章深入學習 → 學完回來自我評估覆蓋率 → 做章末考核測驗驗證理解程度。" },
+    { q: "5 大知識維度是什麼？", a: "1. 企劃職位教學（Level 1-4）2. 剪輯師完整教學（CapCut/Premiere/DaVinci）3. 短影音代操產業知識 4. AI Prompt 兵器庫 5. Manus 自動化工作流" },
+    { q: "建議的學習順序？", a: "企劃（基礎）→ 剪輯（技術）→ 產業知識（商業）→ AI Prompt（效率）→ Manus 自動化（進階）。前三個必修，後兩個選修但強烈建議。" }
   ],
   ch3: [
-    { question: "社群飛輪怎麼啟動？", answer: "社群飛輪的啟動順序：(1) 先產出 10-20 支高品質內容（累積素材庫）。(2) 觀察哪些內容有自然互動（找到受眾偏好）。(3) 加大該類型內容的產出（放大成功模式）。(4) 互動帶來更多觸及 → 觸及帶來更多粉絲 → 粉絲帶來更多互動。關鍵：前 1-2 個月是「推動期」，需要持續產出不看數據。第 3 個月開始才會看到飛輪效應。" },
-    { question: "內容矩陣怎麼設計？", answer: "好創的內容矩陣公式：知識型 60% + 娛樂型 25% + 轉換型 15%。知識型 = 教觀眾東西（建立信任）。娛樂型 = 讓觀眾開心（擴大觸及）。轉換型 = 讓觀眾行動（產生營收）。不要一開始就發轉換型內容，先用知識型和娛樂型累積信任。" }
+    { q: "社群飛輪效應是什麼？", a: "內容（產出）→ 觸及（被看到）→ 互動（被喜歡）→ 轉換（被購買）→ 再投入（更多內容）。前 1-2 個月是推動期，第 3 個月開始顯現。" },
+    { q: "內容矩陣比例是什麼？", a: "知識型 60%（建立信任）+ 娛樂型 25%（擴大觸及）+ 轉換型 15%（產生營收）。不要一開始就發轉換型內容。" },
+    { q: "飛輪啟動期該怎麼做？", a: "持續產出高品質內容，不被數據影響。先累積 10-20 支高品質內容，觀察哪些有自然互動，再放大成功模式。" }
   ],
   ch4: [
-    { question: "企劃 Level 1 到 Level 4 要多久？", answer: "正常進度：Level 1（1-2 週）→ Level 2（1-2 個月）→ Level 3（3-6 個月）→ Level 4（1 年以上）。但這取決於：(1) 每天實際產出量。(2) 是否有主管即時反饋。(3) 是否有用 AI 加速學習。用 AI 輔助的話，Level 1 → Level 2 可以壓縮到 2-3 週。" },
-    { question: "企劃和剪輯師的協作邊界在哪？", answer: "企劃負責：選題、腳本、Hook 設計、CTA 設計、發布時間、數據分析。剪輯師負責：畫面節奏、轉場、音效、字幕樣式、色調、輸出規格。灰色地帶（需要溝通）：BGM 選擇、特效程度、影片長度。原則：企劃決定「說什麼」，剪輯師決定「怎麼呈現」。" },
-    { question: "2026 年演算法最重要的指標是什麼？", answer: "2026 年 Meta 演算法三大核心指標：(1) 完播率（最重要）— 看完的人越多，推送越廣。(2) 複看率 — 重複觀看代表內容有深度價值。(3) 互動品質 — 「誰」在互動比「多少」互動更重要。Power Like（有影響力的帳號互動）價值是普通互動的 5-10 倍。" }
+    { q: "企劃的 Level 進階標準？", a: "Level 1（執行者）→ Level 2（策略者）→ Level 3（操盤手）→ Level 4（商業顧問）。正常 1-2 個月升一級，AI 輔助可壓縮到 2-3 週。" },
+    { q: "2026 演算法最重要的指標？", a: "完播率（最重要）、複看率（決定長期推送）、互動品質（誰在互動比多少互動重要）。Power Like 價值是普通互動的 5-10 倍。" },
+    { q: "企劃和剪輯的協作邊界？", a: "企劃負責「說什麼」：選題、腳本、Hook、CTA。剪輯師負責「怎麼呈現」：畫面節奏、轉場、音效、字幕。" }
   ],
   ch5: [
-    { question: "短影音標準工作流要多久？", answer: "好創標準工作流時間分配：選題（30 分鐘）→ 腳本（1 小時）→ 拍攝（3 小時含準備）→ 剪輯（2-4 小時）→ 審核修改（30 分鐘）→ 發布排程（15 分鐘）。總計：約 7-9 小時/支。用 AI 加速版：選題（10 分鐘）→ 腳本（20 分鐘）→ 拍攝（3 小時）→ 剪輯（1-2 小時）→ 審核（15 分鐘）→ 發布（5 分鐘）。總計：約 4-6 小時/支。" },
-    { question: "一個月要產出多少支影片？", answer: "根據好創的產能防禦機制：每個客戶每月 8-12 支（標準方案）。每位企劃每月可負責 2-3 個客戶 = 16-36 支/月。每位剪輯師每月可處理 20-30 支。所以 4 人團隊的月產能上限約 30-40 支短影音。" }
+    { q: "一支短影音的標準製作時間？", a: "標準版：約 7-9 小時/支。AI 加速版：約 4-6 小時/支。主要節省在選題、腳本、剪輯環節。拍攝環節無法用 AI 替代。" },
+    { q: "4 人團隊月產能上限？", a: "約 30-40 支/月。超出必須拒絕或安排外包資源，這是產能防禦機制的底線。" },
+    { q: "腳本標準結構是什麼？", a: "Hook（前 2 秒抓注意力）→ Body（中段傳遞價值）→ CTA（結尾引導行動）。每段都有明確的目的和設計原則。" }
   ],
   ch6: [
-    { question: "CapCut 和 Premiere Pro 怎麼選？", answer: "選擇邏輯：CapCut = 快速、簡單、適合短影音（15-60 秒）。Premiere Pro = 專業、精細、適合長影片或高品質需求。好創的標準：日常短影音 → CapCut（效率優先）。品牌形象片 / 廣告素材 → Premiere Pro（品質優先）。新人建議：先學 CapCut（1 週上手），再學 Premiere Pro（1 個月熟練）。" },
-    { question: "剪輯師最常犯的錯誤是什麼？", answer: "Top 5 錯誤：(1) 節奏太慢 — 前 3 秒沒有變化，觀眾直接滑走。(2) 字幕太小 — 手機觀看時看不清楚。(3) 音樂蓋過人聲 — BGM 音量應該是人聲的 20-30%。(4) 沒有「呼吸感」— 畫面切換太密集，觀眾疲勞。(5) 結尾太突然 — 沒有給 CTA 足夠的停留時間。" }
+    { q: "日常短影音用什麼軟體？", a: "日常短影音 → CapCut（效率優先，1 週上手）。品牌形象片/廣告素材 → Premiere Pro（品質優先，1 個月熟練）。" },
+    { q: "剪輯最常犯的錯誤？", a: "Top 1：節奏太慢（前 3 秒沒變化）。Top 2：BGM 太大聲（應為人聲的 20-30%）。Top 3：缺乏呼吸感（畫面切換太密集）。" }
   ],
   ch7: [
-    { question: "AI 能取代剪輯師嗎？", answer: "2026 年的答案：不能完全取代，但能大幅提升效率。AI 能做的：自動字幕、自動調色、自動去背、自動配樂、粗剪。AI 不能做的：節奏感判斷、情緒把控、品牌風格一致性、創意轉場。結論：AI 是「加速器」不是「替代品」。好的剪輯師 + AI = 3 倍產能。" },
-    { question: "哪些 AI 功能最實用？", answer: "剪輯師必用的 AI 功能 Top 5：(1) 自動字幕（省 30 分鐘/支）。(2) 自動調色（省 15 分鐘/支）。(3) AI 去背（省 20 分鐘/支）。(4) 智能裁切（一鍵適配多平台比例）。(5) AI 配樂推薦（省 10 分鐘/支）。合計每支影片省 1-1.5 小時。" }
+    { q: "AI 能取代剪輯師嗎？", a: "不能完全取代。AI 能做：自動字幕、調色、去背、配樂、粗剪。不能做：節奏感判斷、情緒把控、品牌風格一致性、創意轉場。好的剪輯師 + AI = 3 倍產能。" },
+    { q: "AI 每支影片省多少時間？", a: "合計省 1-1.5 小時：自動字幕（30 分鐘）+ 自動調色（15 分鐘）+ AI 去背（20 分鐘）+ 智能裁切 + AI 配樂。" }
   ],
   ch8: [
-    { question: "Manus 和 ChatGPT 有什麼不同？", answer: "核心差異：ChatGPT = 對話式 AI（你問一句它答一句）。Manus = 自動化 AI Agent（你給目標它自己完成整個流程）。使用場景：ChatGPT → 發散思考、靈感生成、快速問答。Manus → 批量生成、自動排程、系統化工作流。好創的用法：先用 ChatGPT 想點子 → 用 Claude 優化邏輯 → 用 Manus 批量執行。" },
-    { question: "Manus 自動化能做到什麼程度？", answer: "Manus 在好創的應用場景：(1) 批量生成一週的內容排程（5 分鐘完成原本 2 小時的工作）。(2) 自動分析競品內容並產出報告。(3) 批量生成廣告素材變體（10 個版本同時產出）。(4) 自動化社群健檢（每週自動產出數據報告）。(5) 一鍵生成客戶提案簡報。限制：不能取代「人的判斷」，最終決策仍需要人工審核。" }
+    { q: "AI 工具使用順序？", a: "ChatGPT 想點子（發散）→ Claude 優化邏輯（收斂）→ Manus 批量執行（自動化）。三者各有專長，不可互換。" },
+    { q: "Manus 和 ChatGPT 的差異？", a: "ChatGPT = 對話式 AI（你問一句它答一句）。Manus = 自動化 AI Agent（你給目標它自己完成整個流程）。Manus 5 分鐘完成原本 2 小時的排程工作。" },
+    { q: "AI 資安底線是什麼？", a: "絕對禁止貼入：客戶個資、合約金額、內部財務數據、員工薪資。違反即時通報 COO。" }
   ]
 };
 
-// 通用問答（適用於所有章節）
-const generalFAQs: QAPair[] = [
-  { question: "這章的重點是什麼？", answer: "請回到章節頂部查看「subtitle」描述，那就是本章的核心重點。每章都圍繞一個核心能力展開，建議先理解整體結構再深入細節。" },
-  { question: "我看不懂怎麼辦？", answer: "三個建議：(1) 先跳過，繼續往下看，有時候後面的內容會幫助理解前面的。(2) 用 ChatGPT 把你看不懂的段落貼進去，請它用更簡單的方式解釋。(3) 在 Slack 的 #學習討論 頻道提問，COO 或其他同事會回答。" },
-  { question: "學完這章要多久？", answer: "每章建議學習時間：快速瀏覽 = 15-20 分鐘。深度學習 = 1-2 小時。實作練習 = 額外 2-4 小時。建議：第一遍快速瀏覽，標記不懂的地方。第二遍深度學習，搭配實作。" }
+// 通用 FAQ
+const generalFAQs: { q: string; a: string }[] = [
+  { q: "好創的定位是什麼？", a: "整合行銷、內容營運、IP 經營、商業結果導向的「可擴張內容營運公司」。拒絕單點接案。" },
+  { q: "新人第一天該做什麼？", a: "1. 讀完第一章（好創營運底層邏輯）2. 看心智圖了解全景 3. 設定 Monday.com 和 Slack 帳號 4. 開始第一章考核測驗" }
+];
+
+// 短影音腳本專屬提問
+const scriptPrompts: { label: string; question: string }[] = [
+  { label: "Hook 設計", question: "幫我設計 5 個不同風格的短影音 Hook（前 2 秒），要能讓觀眾停下來看" },
+  { label: "腳本結構", question: "幫我寫一支 30 秒短影音的完整腳本，包含 Hook、Body、CTA 三段結構" },
+  { label: "CTA 設計", question: "幫我設計 3 種不同的 CTA（行動呼籲），要能引導觀眾留言或私訊" },
+  { label: "選題發想", question: "根據好創的內容矩陣（知識 60% + 娛樂 25% + 轉換 15%），幫我發想本週 5 支影片的選題" },
+  { label: "反差 Hook", question: "幫我用「反差感」設計 3 個 Hook，要製造好奇心讓觀眾想看下去" },
+  { label: "完播率優化", question: "這支影片的完播率只有 30%，幫我分析可能的原因，並給出改善建議" }
 ];
 
 export default function AIAssistant({ chapterId, chapterTitle }: AIAssistantProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [showScriptPrompts, setShowScriptPrompts] = useState(false);
 
-  const chapterQAs = chapterFAQs[chapterId] || [];
-  const allQAs = [...chapterQAs, ...generalFAQs];
-
-  const suggestedQuestions = chapterQAs.length > 0 
-    ? chapterQAs.slice(0, 3).map(q => q.question)
-    : generalFAQs.slice(0, 3).map(q => q.question);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  const faqs = [...(chapterFAQs[chapterId] || []), ...generalFAQs];
 
   const handleAsk = (question: string) => {
     if (!question.trim()) return;
-
-    // Add user message
-    setMessages(prev => [...prev, { role: "user", content: question }]);
-    setInputValue("");
-
-    // Find answer
-    const matchedQA = allQAs.find(qa => 
-      qa.question === question || 
-      qa.question.includes(question) || 
-      question.includes(qa.question.slice(0, 10))
+    
+    const userMsg: Message = { role: "user", content: question };
+    
+    // Find matching FAQ
+    const match = faqs.find(f => 
+      question.includes(f.q) || f.q.includes(question) ||
+      question.split("").filter(c => f.q.includes(c)).length > question.length * 0.5
     );
 
-    // Simulate typing delay
-    setTimeout(() => {
-      if (matchedQA) {
-        setMessages(prev => [...prev, { role: "assistant", content: matchedQA.answer }]);
-      } else {
-        setMessages(prev => [...prev, { 
-          role: "assistant", 
-          content: `關於「${question}」，建議你：\n\n1. 重新閱讀本章相關段落，答案可能就在內容中。\n2. 點擊下方的預設問題，看看是否有相關的解答。\n3. 如果還是不懂，在 Slack #學習討論 頻道提問，COO 會親自回答。\n\n💡 提示：試試點擊下方的建議問題，我有更完整的回答。` 
-        }]);
-      }
-    }, 500);
+    // Check script prompts
+    const scriptMatch = scriptPrompts.find(sp => question === sp.question);
+
+    let answer: string;
+    if (match) {
+      answer = match.a;
+    } else if (scriptMatch) {
+      answer = getScriptAnswer(scriptMatch.label);
+    } else {
+      answer = `關於「${question}」的問題，建議你：\n\n1. 查看本章相關段落的詳細說明\n2. 使用上方的「建議問題」按鈕獲取精準回答\n3. 如果是實戰問題，可以參考「實戰案例庫」中的類似案例\n\n💡 提示：AI 學習助手的回答基於好創內部知識庫，如需更深入的指導，請直接詢問 COO。`;
+    }
+
+    const assistantMsg: Message = { role: "assistant", content: answer };
+    setMessages(prev => [...prev, userMsg, assistantMsg]);
+    setInputValue("");
+  };
+
+  const getScriptAnswer = (type: string): string => {
+    const answers: Record<string, string> = {
+      "Hook 設計": "以下是 5 種不同風格的 Hook 設計：\n\n1. 【反差型】「老闆說這個月業績再不好就要收掉了...結果」\n2. 【疑問型】「為什麼 90% 的人做短影音都失敗？因為他們忽略了這一點」\n3. 【數據型】「我用這個方法，7 天內觸及從 500 變成 50,000」\n4. 【痛點型】「你是不是也覺得拍了很多影片但都沒人看？」\n5. 【稀缺型】「這個技巧我只跟付費學員講，今天免費分享」\n\n💡 設計原則：前 2 秒必須製造「好奇心」或「衝突感」，讓觀眾的大腦產生「接下來呢？」的反應。",
+      "腳本結構": "30 秒短影音完整腳本模板：\n\n【Hook（0-2 秒）】\n「你知道為什麼你的影片都沒人看嗎？」\n→ 目的：製造好奇心，阻止滑走\n\n【Body（3-22 秒）】\n「因為 90% 的人都犯了這三個錯誤：\n第一，前 3 秒沒有變化\n第二，節奏太慢觀眾等不了\n第三，沒有給觀眾一個看完的理由」\n→ 目的：傳遞價值，維持注意力\n\n【CTA（23-30 秒）】\n「如果你想知道怎麼解決，留言『教我』我私訊你完整攻略」\n→ 目的：引導行動，產生互動\n\n💡 記住：每一秒都要有存在的理由，刪掉所有「廢話」。",
+      "CTA 設計": "3 種不同風格的 CTA：\n\n1. 【互動型 CTA】\n「你覺得哪個方法最有效？留言 1 或 2 告訴我」\n→ 適合：提升互動率、增加留言數\n\n2. 【私訊型 CTA】\n「想要完整的模板？私訊我『模板』免費領取」\n→ 適合：私域引流、收集潛在客戶\n\n3. 【追蹤型 CTA】\n「追蹤我，下一支教你更進階的技巧」\n→ 適合：粉絲增長、建立期待感\n\n💡 原則：一支影片只放一個 CTA，多了觀眾會選擇困難。",
+      "選題發想": "本週 5 支影片選題（按內容矩陣分配）：\n\n【知識型 × 3】\n1. 「2026 年 IG 演算法最重要的 3 個指標（你可能只知道 1 個）」\n2. 「為什麼你的完播率只有 20%？3 個馬上能改的技巧」\n3. 「AI 工具怎麼用才對？好創內部的 3 步驟流程」\n\n【娛樂型 × 1】\n4. 「行銷公司的日常 vs 客戶以為的日常（反差搞笑）」\n\n【轉換型 × 1】\n5. 「我們幫客戶做到 ROAS 4.8 的真實案例拆解（限時分享）」\n\n💡 排程建議：週一三五發知識型，週二發娛樂型，週四發轉換型。",
+      "反差 Hook": "3 個「反差感」Hook 設計：\n\n1. 【期望 vs 現實】\n「客戶說預算無上限...結果報價單一出」\n→ 利用「期望落差」製造好奇心\n\n2. 【常識 vs 真相】\n「大家都說要每天發文才有流量，但真相是...」\n→ 挑戰「常識」引發認知衝突\n\n3. 【Before vs After】\n「這個帳號一個月前只有 200 粉，現在...」\n→ 用「數據反差」證明可能性\n\n💡 反差感的本質：打破觀眾的預期，讓大腦產生「不對勁」的感覺，從而想知道答案。",
+      "完播率優化": "完播率只有 30% 的可能原因：\n\n【問題診斷】\n1. 前 2 秒沒有 Hook → 觀眾直接滑走\n2. 3-10 秒節奏太慢 → 觀眾失去耐心\n3. 內容與 Hook 不符 → 觀眾覺得被騙\n4. 影片太長（超過觀眾預期）→ 中途離開\n5. 沒有「看完的理由」→ 缺乏懸念\n\n【改善建議】\n1. 重新設計 Hook：用反差/疑問/數據開頭\n2. 加快前 10 秒節奏：每 2-3 秒一個畫面變化\n3. 在 50% 處加入「轉折」：讓觀眾產生新的好奇心\n4. 結尾用「彩蛋」設計：讓觀眾想看到最後\n5. 控制在 15-30 秒：先做短的，驗證有效再做長的\n\n💡 目標：完播率 > 50% 才算及格，> 70% 才有機會被推薦。"
+    };
+    return answers[type] || "請參考本章相關段落的詳細說明。";
+  };
+
+  const handleCopyMessage = (content: string, index: number) => {
+    navigator.clipboard.writeText(content);
+    setCopiedIndex(index);
+    setTimeout(() => setCopiedIndex(null), 2000);
   };
 
   return (
-    <div className="mt-8">
+    <div className="mt-6">
       {/* Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between p-4 rounded-xl transition-all duration-300 ${
-          isOpen 
-            ? "glass-card border-[#F37021]/30" 
-            : "glass-card hover:border-[#F37021]/20"
-        }`}
+        className="w-full flex items-center justify-between p-4 rounded-xl glass-card hover:border-[#F37021]/20 transition-all duration-300"
       >
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500/20 to-[#F37021]/20 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#F37021]/20 to-purple-500/20 flex items-center justify-center">
             <Bot size={16} className="text-[#F37021]" />
           </div>
           <div className="text-left">
             <span className="text-sm font-semibold text-foreground">AI 學習助手</span>
-            <p className="text-[10px] text-muted-foreground">針對本章內容提問，即時獲得解答</p>
+            <p className="text-[10px] text-muted-foreground">針對「{chapterTitle}」的問題隨時提問</p>
           </div>
         </div>
-        <ChevronDown size={16} className={`text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+        <MessageCircle size={16} className={`text-muted-foreground transition-transform duration-200 ${isOpen ? "text-[#F37021]" : ""}`} />
       </button>
 
       {/* Chat Panel */}
@@ -135,80 +155,113 @@ export default function AIAssistant({ chapterId, chapterTitle }: AIAssistantProp
             transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
             className="overflow-hidden"
           >
-            <div className="glass-card mt-2 overflow-hidden">
-              {/* Messages Area */}
-              <div className="max-h-80 overflow-y-auto p-4 space-y-3">
-                {messages.length === 0 && (
-                  <div className="text-center py-6">
-                    <Sparkles size={24} className="mx-auto text-[#F37021]/40 mb-3" />
-                    <p className="text-sm text-muted-foreground">有什麼關於「{chapterTitle.replace(/^[壹貳參肆伍陸柒捌玖拾百千]+、/, "")}」的問題嗎？</p>
-                    <p className="text-[10px] text-muted-foreground/60 mt-1">點擊下方建議問題，或自行輸入</p>
-                  </div>
-                )}
-
-                {messages.map((msg, i) => (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className={`flex gap-2.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                  >
-                    {msg.role === "assistant" && (
-                      <div className="flex-shrink-0 w-6 h-6 rounded-md bg-[#F37021]/10 flex items-center justify-center mt-0.5">
-                        <Bot size={12} className="text-[#F37021]" />
-                      </div>
-                    )}
-                    <div className={`max-w-[80%] px-3.5 py-2.5 rounded-xl text-xs leading-relaxed ${
-                      msg.role === "user" 
-                        ? "bg-[#F37021]/15 text-foreground rounded-br-sm" 
-                        : "bg-border/20 text-foreground/90 rounded-bl-sm"
-                    }`}>
-                      <p className="whitespace-pre-line">{msg.content}</p>
-                    </div>
-                    {msg.role === "user" && (
-                      <div className="flex-shrink-0 w-6 h-6 rounded-md bg-border/30 flex items-center justify-center mt-0.5">
-                        <User size={12} className="text-muted-foreground" />
-                      </div>
-                    )}
-                  </motion.div>
-                ))}
-                <div ref={messagesEndRef} />
+            <div className="glass-card mt-2 p-4">
+              {/* Script Prompts Toggle */}
+              <div className="mb-3">
+                <button
+                  onClick={() => setShowScriptPrompts(!showScriptPrompts)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all duration-200 ${
+                    showScriptPrompts
+                      ? "bg-purple-500/15 text-purple-400 border border-purple-500/30"
+                      : "bg-border/20 text-muted-foreground hover:text-foreground border border-border/30"
+                  }`}
+                >
+                  <Film size={12} />
+                  短影音腳本專屬提問
+                </button>
               </div>
+
+              {/* Script Prompt Buttons */}
+              <AnimatePresence>
+                {showScriptPrompts && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden mb-3"
+                  >
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 p-3 rounded-lg bg-purple-500/5 border border-purple-500/10">
+                      {scriptPrompts.map((sp) => (
+                        <button
+                          key={sp.label}
+                          onClick={() => handleAsk(sp.question)}
+                          className="flex items-center gap-1.5 px-2.5 py-2 rounded-md text-[10px] font-medium bg-purple-500/10 text-purple-300 hover:bg-purple-500/20 hover:text-purple-200 transition-all duration-200 active:scale-[0.97]"
+                        >
+                          <Sparkles size={10} />
+                          {sp.label}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Suggested Questions */}
-              <div className="px-4 pb-3 flex flex-wrap gap-1.5">
-                {suggestedQuestions.map((q, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleAsk(q)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-medium bg-border/15 text-muted-foreground hover:text-foreground hover:bg-[#F37021]/10 hover:text-[#F37021] transition-all duration-200 border border-border/20 hover:border-[#F37021]/30"
-                  >
-                    <Lightbulb size={10} />
-                    {q.length > 20 ? q.slice(0, 20) + "..." : q}
-                  </button>
-                ))}
-              </div>
-
-              {/* Input Area */}
-              <div className="px-4 pb-4">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) handleAsk(inputValue); }}
-                    placeholder="輸入你的問題..."
-                    className="flex-1 px-3.5 py-2.5 rounded-lg bg-border/20 border border-border/30 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-[#F37021]/50 focus:ring-1 focus:ring-[#F37021]/20 transition-all"
-                  />
-                  <button
-                    onClick={() => handleAsk(inputValue)}
-                    disabled={!inputValue.trim()}
-                    className="px-3.5 py-2.5 rounded-lg bg-[#F37021] text-white text-xs font-medium hover:bg-[#FF8C42] disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 active:scale-95"
-                  >
-                    <Send size={14} />
-                  </button>
+              {messages.length === 0 && (
+                <div className="mb-4">
+                  <p className="text-[10px] text-muted-foreground/70 mb-2">建議問題：</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(chapterFAQs[chapterId] || generalFAQs).slice(0, 4).map((faq, i) => (
+                      <button
+                        key={i}
+                        onClick={() => handleAsk(faq.q)}
+                        className="px-2.5 py-1.5 rounded-md text-[10px] bg-border/20 text-muted-foreground hover:text-foreground hover:bg-border/30 transition-all duration-200 active:scale-[0.97]"
+                      >
+                        {faq.q}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+              )}
+
+              {/* Messages */}
+              {messages.length > 0 && (
+                <div className="max-h-80 overflow-y-auto space-y-3 mb-4 pr-1">
+                  {messages.map((msg, i) => (
+                    <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                      <div className={`relative group max-w-[85%] px-3.5 py-2.5 rounded-xl text-[11px] leading-relaxed ${
+                        msg.role === "user"
+                          ? "bg-[#F37021]/15 text-foreground rounded-br-sm"
+                          : "bg-border/15 text-foreground/90 rounded-bl-sm"
+                      }`}>
+                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                        
+                        {/* Copy Button for assistant messages */}
+                        {msg.role === "assistant" && (
+                          <button
+                            onClick={() => handleCopyMessage(msg.content, i)}
+                            className={`absolute -bottom-1 -right-1 p-1.5 rounded-md transition-all duration-200 ${
+                              copiedIndex === i
+                                ? "bg-emerald-500/20 text-emerald-400"
+                                : "bg-border/30 text-muted-foreground/50 opacity-0 group-hover:opacity-100 hover:text-foreground"
+                            }`}
+                          >
+                            {copiedIndex === i ? <CheckCircle2 size={11} /> : <Copy size={11} />}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Input */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) handleAsk(inputValue); }}
+                  placeholder="輸入你的問題..."
+                  className="flex-1 px-3.5 py-2.5 rounded-lg bg-border/20 border border-border/30 text-xs text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-[#F37021]/50 focus:ring-1 focus:ring-[#F37021]/20 transition-all"
+                />
+                <button
+                  onClick={() => handleAsk(inputValue)}
+                  disabled={!inputValue.trim()}
+                  className="px-3.5 py-2.5 rounded-lg bg-[#F37021] text-white text-xs font-medium hover:bg-[#FF8C42] disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 active:scale-95"
+                >
+                  <Send size={14} />
+                </button>
               </div>
             </div>
           </motion.div>

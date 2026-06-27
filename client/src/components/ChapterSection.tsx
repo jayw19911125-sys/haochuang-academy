@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Copy, Check, ChevronDown } from "lucide-react";
 import type { ChapterContent, Section } from "@/lib/data";
 import AIAssistant from "@/components/AIAssistant";
+import QuizModule from "@/components/QuizModule";
 
 interface ChapterSectionProps {
   chapter: ChapterContent;
@@ -67,6 +68,9 @@ export default function ChapterSection({ chapter, index, onVisible }: ChapterSec
 
       {/* AI 學習助手 - 每章底部 */}
       <AIAssistant chapterId={chapter.id} chapterTitle={chapter.title} />
+
+      {/* 考核測驗 - 每章最底部 */}
+      <QuizModule chapterId={chapter.id} chapterTitle={chapter.title} />
     </motion.div>
   );
 }

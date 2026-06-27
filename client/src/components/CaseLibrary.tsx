@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Tag, TrendingUp, Eye, Heart, Share2, Filter, X, Target, Zap } from "lucide-react";
+import { Search, Tag, TrendingUp, Eye, Heart, Share2, Filter, X, Target, Zap, Bookmark, BookmarkCheck, Download, Copy, CheckCircle2 } from "lucide-react";
 
 interface CaseStudy {
   id: string;
@@ -119,12 +119,69 @@ const platforms = ["全部", "Instagram", "TikTok", "YouTube", "Facebook", "多�
 const types = ["全部", "品牌曝光", "導購轉換", "粉絲增長", "互動提升", "私域引流"];
 const industries = ["全部", "餐飲", "美妝保養", "健身", "科技", "美業"];
 
+const FAVORITES_KEY = "haochuang-case-favorites";
+
 export default function CaseLibrary() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPlatform, setSelectedPlatform] = useState("全部");
   const [selectedType, setSelectedType] = useState("全部");
   const [selectedIndustry, setSelectedIndustry] = useState("全部");
   const [expandedCase, setExpandedCase] = useState<string | null>(null);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [exportCopied, setExportCopied] = useState<string | null>(null);
+
+  // Load favorites from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem(FAVORITES_KEY);
+    if (stored) {
+      setFavorites(JSON.parse(stored));
+    }
+  }, []);
+
+  // Save favorites to localStorage
+  const toggleFavorite = (caseId: string) => {
+    const newFavorites = favorites.includes(caseId)
+      ? favorites.filter(id => id !== caseId)
+      : [...favorites, caseId];
+    setFavorites(newFavorites);
+    localStorage.setItem(FAVORITES_KEY, JSON.stringify(newFavorites));
+  };
+
+  // Export case as strategy report
+  const exportCaseReport = (cs: CaseStudy) => {
+    const report = `# 策略拆解報告：${cs.title}
+
+## 基本資訊
+- **客戶：** ${cs.client}
+- **產業：** ${cs.industry}
+- **平台：** ${cs.platform}
+- **類型：** ${cs.type}
+- **執行期間：** ${cs.duration}
+
+## 成效數據
+${cs.metrics.map(m => `- **${m.label}：** ${m.value} ${m.change ? `(${m.change})` : ""}`).join("\n")}
+
+## 核心成果
+${cs.result}
+
+## 策略拆解
+${cs.strategy}
+
+## AI 工具應用
+${cs.aiTools.map(tool => `- ${tool}`).join("\n")}
+
+## 關鍵標籤
+${cs.tags.map(tag => `#${tag}`).join(" ")}
+
+---
+*報告生成時間：${new Date().toLocaleDateString("zh-TW")}*
+*來源：好創學院 實戰案例庫*
+`;
+    navigator.clipboard.writeText(report);
+    setExportCopied(cs.id);
+    setTimeout(() => setExportCopied(null), 2000);
+  };
 
   const filteredCases = useMemo(() => {
     return caseStudies.filter(c => {
@@ -135,33 +192,53 @@ export default function CaseLibrary() {
       const matchPlatform = selectedPlatform === "全部" || c.platform === selectedPlatform;
       const matchType = selectedType === "全部" || c.type === selectedType;
       const matchIndustry = selectedIndustry === "全部" || c.industry === selectedIndustry;
-      return matchSearch && matchPlatform && matchType && matchIndustry;
+      const matchFavorites = !showFavoritesOnly || favorites.includes(c.id);
+      return matchSearch && matchPlatform && matchType && matchIndustry && matchFavorites;
     });
-  }, [searchQuery, selectedPlatform, selectedType, selectedIndustry]);
+  }, [searchQuery, selectedPlatform, selectedType, selectedIndustry, showFavoritesOnly, favorites]);
 
   const clearFilters = () => {
     setSearchQuery("");
     setSelectedPlatform("全部");
     setSelectedType("全部");
     setSelectedIndustry("全部");
+    setShowFavoritesOnly(false);
   };
 
-  const hasActiveFilters = searchQuery || selectedPlatform !== "全部" || selectedType !== "全部" || selectedIndustry !== "全部";
+  const hasActiveFilters = searchQuery || selectedPlatform !== "全部" || selectedType !== "全部" || selectedIndustry !== "全部" || showFavoritesOnly;
 
   return (
     <div className="space-y-6">
       {/* Search & Filter Bar */}
       <div className="glass-card p-4 space-y-4">
-        {/* Search */}
-        <div className="relative">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="搜尋案例（關鍵字、策略、標籤...）"
-            className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-border/20 border border-border/30 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-[#F37021]/50 focus:ring-1 focus:ring-[#F37021]/20 transition-all"
-          />
+        {/* Search + Favorites Toggle */}
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="搜尋案例（關鍵字、策略、標籤...）"
+              className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-border/20 border border-border/30 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-[#F37021]/50 focus:ring-1 focus:ring-[#F37021]/20 transition-all"
+            />
+          </div>
+          <button
+            onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+            className={`flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+              showFavoritesOnly
+                ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                : "bg-border/20 text-muted-foreground hover:text-foreground border border-border/30 hover:border-border/50"
+            }`}
+          >
+            <BookmarkCheck size={14} />
+            <span className="hidden sm:inline">收藏</span>
+            {favorites.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-amber-500/20 text-[9px] font-bold">
+                {favorites.length}
+              </span>
+            )}
+          </button>
         </div>
 
         {/* Filter Tabs */}
@@ -251,12 +328,12 @@ export default function CaseLibrary() {
               className="glass-card overflow-hidden"
             >
               {/* Case Header */}
-              <button
-                onClick={() => setExpandedCase(expandedCase === cs.id ? null : cs.id)}
-                className="w-full p-5 text-left hover:bg-border/5 transition-colors"
-              >
+              <div className="p-5">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
+                  <button
+                    onClick={() => setExpandedCase(expandedCase === cs.id ? null : cs.id)}
+                    className="flex-1 text-left"
+                  >
                     <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-[#F37021]/10 text-[#F37021]">
                         {cs.platform}
@@ -270,23 +347,39 @@ export default function CaseLibrary() {
                     </div>
                     <h4 className="text-sm font-bold text-foreground">{cs.title}</h4>
                     <p className="text-[11px] text-muted-foreground mt-1">{cs.client} · {cs.duration}</p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-xs font-bold text-green-400">{cs.result.split("，")[0]}</p>
+                  </button>
+                  
+                  {/* Favorite + Result */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => toggleFavorite(cs.id)}
+                      className={`p-2 rounded-lg transition-all duration-200 ${
+                        favorites.includes(cs.id)
+                          ? "bg-amber-500/15 text-amber-400"
+                          : "text-muted-foreground/40 hover:text-amber-400 hover:bg-amber-500/10"
+                      }`}
+                    >
+                      {favorites.includes(cs.id) ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
+                    </button>
                   </div>
                 </div>
 
                 {/* Metrics Preview */}
-                <div className="grid grid-cols-4 gap-2 mt-4">
-                  {cs.metrics.map((m, i) => (
-                    <div key={i} className="text-center p-2 rounded-lg bg-border/10">
-                      <div className="text-[10px] text-muted-foreground">{m.label}</div>
-                      <div className="text-xs font-bold text-foreground mt-0.5">{m.value}</div>
-                      {m.change && <div className="text-[9px] text-green-400">{m.change}</div>}
-                    </div>
-                  ))}
-                </div>
-              </button>
+                <button
+                  onClick={() => setExpandedCase(expandedCase === cs.id ? null : cs.id)}
+                  className="w-full"
+                >
+                  <div className="grid grid-cols-4 gap-2 mt-4">
+                    {cs.metrics.map((m, i) => (
+                      <div key={i} className="text-center p-2 rounded-lg bg-border/10">
+                        <div className="text-[10px] text-muted-foreground">{m.label}</div>
+                        <div className="text-xs font-bold text-foreground mt-0.5">{m.value}</div>
+                        {m.change && <div className="text-[9px] text-green-400">{m.change}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </button>
+              </div>
 
               {/* Expanded Content */}
               <AnimatePresence>
@@ -331,6 +424,28 @@ export default function CaseLibrary() {
                           </span>
                         ))}
                       </div>
+
+                      {/* Export Button */}
+                      <div className="pt-3 border-t border-border/10">
+                        <button
+                          onClick={() => exportCaseReport(cs)}
+                          className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-medium transition-all duration-200 active:scale-[0.97] ${
+                            exportCopied === cs.id
+                              ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                              : "bg-[#F37021]/10 text-[#F37021] border border-[#F37021]/20 hover:bg-[#F37021]/20"
+                          }`}
+                        >
+                          {exportCopied === cs.id ? (
+                            <>
+                              <CheckCircle2 size={14} /> 已複製到剪貼簿
+                            </>
+                          ) : (
+                            <>
+                              <Download size={14} /> 一鍵匯出策略拆解報告
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </motion.div>
                 )}
@@ -342,7 +457,9 @@ export default function CaseLibrary() {
         {filteredCases.length === 0 && (
           <div className="glass-card p-8 text-center">
             <Search size={24} className="mx-auto text-muted-foreground/30 mb-3" />
-            <p className="text-sm text-muted-foreground">沒有找到符合條件的案例</p>
+            <p className="text-sm text-muted-foreground">
+              {showFavoritesOnly ? "尚未收藏任何案例" : "沒有找到符合條件的案例"}
+            </p>
             <button onClick={clearFilters} className="text-xs text-[#F37021] mt-2 hover:underline">
               清除所有篩選
             </button>
