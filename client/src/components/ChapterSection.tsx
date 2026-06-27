@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Copy, Check, ChevronDown } from "lucide-react";
 import type { ChapterContent, Section } from "@/lib/data";
+import AIAssistant from "@/components/AIAssistant";
 
 interface ChapterSectionProps {
   chapter: ChapterContent;
@@ -63,6 +64,9 @@ export default function ChapterSection({ chapter, index, onVisible }: ChapterSec
           <SectionRenderer key={section.id} section={section} delay={sIdx * 0.05} />
         ))}
       </div>
+
+      {/* AI 學習助手 - 每章底部 */}
+      <AIAssistant chapterId={chapter.id} chapterTitle={chapter.title} />
     </motion.div>
   );
 }

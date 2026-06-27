@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Layers, Target, Rocket, Film, Zap, Brain, 
-  BarChart3, Users, X, ExternalLink
+  BarChart3, Users, X, ExternalLink, Trophy, BookMarked
 } from "lucide-react";
 import { chapters } from "@/lib/data";
 
@@ -116,6 +116,32 @@ export default function Sidebar({ isOpen, onClose, activeChapter, onChapterSelec
             })}
           </ul>
         </nav>
+
+        {/* Special Sections */}
+        <div className="px-3 mt-2 mb-2">
+          <div className="border-t border-sidebar-border pt-2 space-y-1">
+            <a
+              href="#milestone"
+              className="w-full text-left px-3 py-2.5 rounded-lg transition-all duration-200 group flex items-center gap-2.5 hover:bg-sidebar-accent border border-transparent"
+            >
+              <Trophy size={16} className="text-emerald-500" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-muted-foreground group-hover:text-foreground truncate">新人 30 天里程碑</p>
+                <p className="text-[10px] text-muted-foreground/70 truncate mt-0.5">互動式進度追蹤</p>
+              </div>
+            </a>
+            <a
+              href="#case-library"
+              className="w-full text-left px-3 py-2.5 rounded-lg transition-all duration-200 group flex items-center gap-2.5 hover:bg-sidebar-accent border border-transparent"
+            >
+              <BookMarked size={16} className="text-amber-500" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-muted-foreground group-hover:text-foreground truncate">實戰案例庫</p>
+                <p className="text-[10px] text-muted-foreground/70 truncate mt-0.5">分類標籤 + 搜尋篩選</p>
+              </div>
+            </a>
+          </div>
+        </div>
 
         {/* Bottom Links */}
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-sidebar-border bg-sidebar/80 backdrop-blur-sm">

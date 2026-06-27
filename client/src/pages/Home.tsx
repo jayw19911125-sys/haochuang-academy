@@ -8,6 +8,8 @@ import {
 import Sidebar from "@/components/Sidebar";
 import HeroSection from "@/components/HeroSection";
 import ChapterSection from "@/components/ChapterSection";
+import MilestoneTracker from "@/components/MilestoneTracker";
+import CaseLibrary from "@/components/CaseLibrary";
 import { chapters } from "@/lib/data";
 
 export default function Home() {
@@ -79,6 +81,48 @@ export default function Home() {
               onVisible={() => setActiveChapter(idx)}
             />
           ))}
+
+          {/* 新人 30 天里程碑 */}
+          <div id="milestone" className="py-16">
+            <div className="mb-10">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold bg-gradient-to-br from-emerald-500 to-teal-600" style={{ boxShadow: '0 0 15px rgba(16,185,129,0.4)' }}>
+                  ★
+                </div>
+                <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium">
+                  全員必修
+                </span>
+              </div>
+              <h2 className="font-black text-foreground leading-tight tracking-tight" style={{ fontSize: 'clamp(1.5rem, 4vw, 2.25rem)' }}>
+                新人 30 天里程碑
+              </h2>
+              <p className="mt-2 text-muted-foreground" style={{ fontSize: 'clamp(0.8rem, 2vw, 0.95rem)' }}>
+                互動式進度追蹤系統 — 每週目標 + 自我評估核取清單
+              </p>
+            </div>
+            <MilestoneTracker />
+          </div>
+
+          {/* 實戰案例庫 */}
+          <div id="case-library" className="py-16">
+            <div className="mb-10">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold bg-gradient-to-br from-amber-500 to-orange-600" style={{ boxShadow: '0 0 15px rgba(245,158,11,0.4)' }}>
+                  ☆
+                </div>
+                <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium">
+                  全員參考
+                </span>
+              </div>
+              <h2 className="font-black text-foreground leading-tight tracking-tight" style={{ fontSize: 'clamp(1.5rem, 4vw, 2.25rem)' }}>
+                實戰案例庫
+              </h2>
+              <p className="mt-2 text-muted-foreground" style={{ fontSize: 'clamp(0.8rem, 2vw, 0.95rem)' }}>
+                分類標籤 + 搜尋篩選 — 從真實案例中學習過去的成功經驗
+              </p>
+            </div>
+            <CaseLibrary />
+          </div>
         </div>
 
         {/* Footer */}
