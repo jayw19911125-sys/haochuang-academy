@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Send, MessageCircle, Calendar, CheckCircle2, XCircle, RotateCcw, Sparkles, Clock } from "lucide-react";
+import { Send, MessageCircle, Calendar, CheckCircle2, XCircle, RotateCcw, Sparkles, Clock, ChevronDown, ChevronUp, History, Eye, EyeOff } from "lucide-react";
 
 interface DailyQuestion {
   id: string;
@@ -33,17 +33,30 @@ const DAILY_QUIZ_POOL: DailyQuestion[] = [
 const STORAGE_KEY = "haochuang-daily-quiz";
 const SLACK_CHANNEL_ID = "C0ATK171BU5"; // #all-共同成長
 
+interface HistoryEntry {
+  date: string;
+  questionId: string;
+  correct: boolean;
+  selectedIndex?: number;
+}
+
 interface DailyQuizState {
   lastDate: string;
   todayQuestionId: string;
   answered: boolean;
   selectedIndex: number | null;
   sentToSlack: boolean;
-  history: { date: string; questionId: string; correct: boolean }[];
+  history: HistoryEntry[];
 }
 
 function getTodayKey(): string {
   return new Date().toISOString().split("T")[0];
+}
+
+function getQuestionForDate(dateStr: string): DailyQuestion {
+  const dateNum = parseInt(dateStr.replace(/-/g, ""), 10);
+  const questionIdx = dateNum % DAILY_QUIZ_POOL.length;
+  return DAILY_QUIZ_POOL[questionIdx];
 }
 
 function getDailyQuizState(): DailyQuizState {
@@ -52,17 +65,26 @@ function getDailyQuizState(): DailyQuizState {
     if (stored) {
       const state = JSON.parse(stored);
       if (state.lastDate === getTodayKey()) return state;
+      // New day — carry over history, reset today's state
+      const today = getTodayKey();
+      const todayQuestion = getQuestionForDate(today);
+      return {
+        lastDate: today,
+        todayQuestionId: todayQuestion.id,
+        answered: false,
+        selectedIndex: null,
+        sentToSlack: false,
+        history: state.history || [],
+      };
     }
   } catch {}
   
-  // Generate today's question (deterministic based on date)
   const today = getTodayKey();
-  const dateNum = parseInt(today.replace(/-/g, ""), 10);
-  const questionIdx = dateNum % DAILY_QUIZ_POOL.length;
+  const todayQuestion = getQuestionForDate(today);
   
   return {
     lastDate: today,
-    todayQuestionId: DAILY_QUIZ_POOL[questionIdx].id,
+    todayQuestionId: todayQuestion.id,
     answered: false,
     selectedIndex: null,
     sentToSlack: false,
@@ -74,6 +96,24 @@ function saveDailyQuizState(state: DailyQuizState) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
+  const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
+  const weekday = weekdays[d.getDay()];
+  return `${month}/${day} (${weekday})`;
+}
+
+function getPastDays(count: number): string[] {
+  const days: string[] = [];
+  for (let i = 1; i <= count; i++) {
+    const d = new Date(Date.now() - i * 86400000);
+    days.push(d.toISOString().split("T")[0]);
+  }
+  return days;
+}
+
 interface DailyQuizProps {
   onSendToSlack?: (message: string) => void;
 }
@@ -82,6 +122,8 @@ export default function DailyQuiz({ onSendToSlack }: DailyQuizProps) {
   const [state, setState] = useState<DailyQuizState>(getDailyQuizState());
   const [sending, setSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
 
   const todayQuestion = useMemo(() => {
     return DAILY_QUIZ_POOL.find(q => q.id === state.todayQuestionId) || DAILY_QUIZ_POOL[0];
@@ -94,7 +136,7 @@ export default function DailyQuiz({ onSendToSlack }: DailyQuizProps) {
       ...state,
       answered: true,
       selectedIndex: idx,
-      history: [...state.history, { date: state.lastDate, questionId: todayQuestion.id, correct: isCorrect }],
+      history: [...state.history, { date: state.lastDate, questionId: todayQuestion.id, correct: isCorrect, selectedIndex: idx }],
     };
     setState(newState);
     saveDailyQuizState(newState);
@@ -103,7 +145,6 @@ export default function DailyQuiz({ onSendToSlack }: DailyQuizProps) {
   const handleSendToSlack = async () => {
     setSending(true);
     try {
-      // Format message for Slack
       const difficultyEmoji = todayQuestion.difficulty === "基礎" ? "🟢" : todayQuestion.difficulty === "進階" ? "🟡" : "🔴";
       const message = `📝 *好創學院｜每日一題* (${getTodayKey()})\n\n${difficultyEmoji} 難度：${todayQuestion.difficulty}｜章節：${todayQuestion.chapterTitle}\n\n> ${todayQuestion.question}\n\nA. ${todayQuestion.options[0]}\nB. ${todayQuestion.options[1]}\nC. ${todayQuestion.options[2]}\nD. ${todayQuestion.options[3]}\n\n_💡 答案稍後公佈，先想想再看！_\n\n||答案：${"ABCD"[todayQuestion.correctIndex]}. ${todayQuestion.options[todayQuestion.correctIndex]}\n\n📖 解析：${todayQuestion.explanation}||`;
       
@@ -137,6 +178,22 @@ export default function DailyQuiz({ onSendToSlack }: DailyQuizProps) {
   const totalAnswered = state.history.length;
   const totalCorrect = state.history.filter(h => h.correct).length;
   const accuracy = totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0;
+
+  // Generate history entries (past 14 days, showing which ones were answered)
+  const historyEntries = useMemo(() => {
+    const pastDays = getPastDays(14);
+    return pastDays.map(dateStr => {
+      const question = getQuestionForDate(dateStr);
+      const historyRecord = state.history.find(h => h.date === dateStr);
+      return {
+        date: dateStr,
+        question,
+        answered: !!historyRecord,
+        correct: historyRecord?.correct || false,
+        selectedIndex: historyRecord?.selectedIndex,
+      };
+    });
+  }, [state.history]);
 
   return (
     <div className="glass-card rounded-xl overflow-hidden">
@@ -288,6 +345,185 @@ export default function DailyQuiz({ onSendToSlack }: DailyQuizProps) {
             </p>
           )}
         </div>
+      </div>
+
+      {/* History Section */}
+      <div className="border-t border-border/20">
+        <button
+          onClick={() => setShowHistory(!showHistory)}
+          className="w-full px-5 py-4 flex items-center justify-between hover:bg-background/20 transition-colors"
+        >
+          <div className="flex items-center gap-2.5">
+            <History size={15} className="text-violet-400" />
+            <span className="text-xs font-medium text-foreground">歷史題目回顧</span>
+            <span className="text-[10px] text-muted-foreground">
+              (過去 14 天 · 已答 {state.history.length} 題)
+            </span>
+          </div>
+          {showHistory ? (
+            <ChevronUp size={14} className="text-muted-foreground" />
+          ) : (
+            <ChevronDown size={14} className="text-muted-foreground" />
+          )}
+        </button>
+
+        {showHistory && (
+          <div className="px-5 pb-5 space-y-2">
+            {/* Stats Summary */}
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              <div className="p-3 rounded-lg bg-background/30 border border-border/20 text-center">
+                <p className="text-lg font-black font-mono text-foreground">{totalAnswered}</p>
+                <p className="text-[9px] text-muted-foreground">已答題數</p>
+              </div>
+              <div className="p-3 rounded-lg bg-background/30 border border-border/20 text-center">
+                <p className="text-lg font-black font-mono text-emerald-400">{totalCorrect}</p>
+                <p className="text-[9px] text-muted-foreground">答對題數</p>
+              </div>
+              <div className="p-3 rounded-lg bg-background/30 border border-border/20 text-center">
+                <p className="text-lg font-black font-mono text-blue-400">{accuracy}%</p>
+                <p className="text-[9px] text-muted-foreground">正確率</p>
+              </div>
+            </div>
+
+            {/* History List */}
+            <div className="space-y-1.5">
+              {historyEntries.map((entry) => {
+                const isExpanded = expandedHistoryId === entry.date;
+                const difficultyColor = entry.question.difficulty === "基礎" ? "text-emerald-400" :
+                  entry.question.difficulty === "進階" ? "text-amber-400" : "text-red-400";
+                
+                return (
+                  <div key={entry.date} className="rounded-lg border border-border/20 overflow-hidden">
+                    {/* History Item Header */}
+                    <button
+                      onClick={() => setExpandedHistoryId(isExpanded ? null : entry.date)}
+                      className="w-full px-4 py-3 flex items-center gap-3 hover:bg-background/20 transition-colors"
+                    >
+                      {/* Date */}
+                      <div className="flex-shrink-0 w-16">
+                        <span className="text-[10px] font-mono text-muted-foreground">
+                          {formatDate(entry.date)}
+                        </span>
+                      </div>
+
+                      {/* Status Indicator */}
+                      <div className="flex-shrink-0">
+                        {entry.answered ? (
+                          entry.correct ? (
+                            <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                              <CheckCircle2 size={12} className="text-emerald-400" />
+                            </div>
+                          ) : (
+                            <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center">
+                              <XCircle size={12} className="text-red-400" />
+                            </div>
+                          )
+                        ) : (
+                          <div className="w-5 h-5 rounded-full bg-border/30 flex items-center justify-center">
+                            <span className="text-[8px] text-muted-foreground">—</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Question Preview */}
+                      <div className="flex-1 min-w-0 text-left">
+                        <p className="text-[11px] text-foreground truncate">
+                          {entry.question.question}
+                        </p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className={`text-[9px] font-medium ${difficultyColor}`}>
+                            {entry.question.difficulty}
+                          </span>
+                          <span className="text-[9px] text-muted-foreground/60">·</span>
+                          <span className="text-[9px] text-muted-foreground/70">
+                            {entry.question.chapterTitle}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Expand Icon */}
+                      <div className="flex-shrink-0">
+                        {isExpanded ? (
+                          <ChevronUp size={12} className="text-muted-foreground" />
+                        ) : (
+                          <ChevronDown size={12} className="text-muted-foreground" />
+                        )}
+                      </div>
+                    </button>
+
+                    {/* Expanded Content */}
+                    {isExpanded && (
+                      <div className="px-4 pb-4 pt-1 border-t border-border/10 bg-background/20">
+                        {/* Full Question */}
+                        <p className="text-xs font-medium text-foreground leading-relaxed mb-3">
+                          {entry.question.question}
+                        </p>
+
+                        {/* Options with correct/incorrect marking */}
+                        <div className="space-y-1.5 mb-3">
+                          {entry.question.options.map((option, idx) => {
+                            const isCorrectOption = idx === entry.question.correctIndex;
+                            const wasSelected = entry.answered && entry.selectedIndex === idx;
+                            
+                            let style = "border-border/15 text-muted-foreground";
+                            if (isCorrectOption) {
+                              style = "border-emerald-500/40 bg-emerald-500/5 text-emerald-400";
+                            } else if (wasSelected && !isCorrectOption) {
+                              style = "border-red-500/40 bg-red-500/5 text-red-400";
+                            }
+                            
+                            return (
+                              <div
+                                key={idx}
+                                className={`flex items-center gap-2.5 px-3 py-2 rounded-md border ${style}`}
+                              >
+                                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0 ${
+                                  isCorrectOption ? "bg-emerald-500 text-white" :
+                                  wasSelected ? "bg-red-500 text-white" :
+                                  "bg-border/30 text-muted-foreground"
+                                }`}>
+                                  {"ABCD"[idx]}
+                                </span>
+                                <span className="text-[11px]">{option}</span>
+                                {isCorrectOption && <CheckCircle2 size={11} className="ml-auto text-emerald-400" />}
+                                {wasSelected && !isCorrectOption && <XCircle size={11} className="ml-auto text-red-400" />}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Explanation */}
+                        <div className="p-3 rounded-md bg-violet-500/5 border border-violet-500/15">
+                          <p className="text-[9px] font-medium text-violet-400 uppercase tracking-wider mb-1">詳細解析</p>
+                          <p className="text-[11px] text-foreground/90 leading-relaxed">
+                            {entry.question.explanation}
+                          </p>
+                        </div>
+
+                        {/* Answer Status */}
+                        {!entry.answered && (
+                          <div className="mt-2 p-2 rounded-md bg-amber-500/5 border border-amber-500/15">
+                            <p className="text-[9px] text-amber-400">
+                              ⚠️ 你當天未作答此題
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Empty State */}
+            {historyEntries.length === 0 && (
+              <div className="py-6 text-center">
+                <Calendar size={24} className="mx-auto text-muted-foreground/30 mb-2" />
+                <p className="text-xs text-muted-foreground">尚無歷史紀錄</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
