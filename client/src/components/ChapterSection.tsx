@@ -96,6 +96,7 @@ function SectionRenderer({ section, delay }: { section: Section; delay: number }
       {section.type === "steps" && section.steps && <StepsBlock steps={section.steps} />}
       {section.type === "flipcard" && section.flipCards && <FlipCardBlock cards={section.flipCards} />}
       {section.type === "checklist" && section.checklistItems && <ChecklistBlock items={section.checklistItems} />}
+      {section.type === "image" && section.imageData && <ImageBlock data={section.imageData} />}
     </motion.div>
   );
 }
@@ -307,5 +308,35 @@ function ChecklistBlock({ items }: { items: string[] }) {
         </span>
       </div>
     </div>
+  );
+}
+
+function ImageBlock({ data }: { data: { url: string; alt: string; caption?: string; width?: string; height?: string } }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      whileInView={{ opacity: 1, scale: 1 }}
+      viewport={{ once: true, margin: "-50px" }}
+      transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
+      className="glass-card overflow-hidden"
+    >
+      <div className="relative bg-gradient-to-br from-[#F37021]/5 to-transparent p-1">
+        <img 
+          src={data.url} 
+          alt={data.alt}
+          className="w-full h-auto rounded-lg object-cover"
+          style={{
+            width: data.width || "100%",
+            height: data.height || "auto",
+            maxHeight: "600px"
+          }}
+        />
+      </div>
+      {data.caption && (
+        <div className="px-4 py-3 border-t border-border/20">
+          <p className="text-xs text-muted-foreground text-center leading-relaxed">{data.caption}</p>
+        </div>
+      )}
+    </motion.div>
   );
 }

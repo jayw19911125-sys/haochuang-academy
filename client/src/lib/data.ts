@@ -11,7 +11,7 @@ export interface ChapterContent {
 export interface Section {
   id: string;
   title: string;
-  type: "text" | "table" | "prompt" | "steps" | "comparison" | "checklist" | "flipcard" | "glossary";
+  type: "text" | "table" | "prompt" | "steps" | "comparison" | "checklist" | "flipcard" | "glossary" | "image";
   content: string;
   tableData?: { headers: string[]; rows: string[][] };
   promptData?: { model: string; purpose: string; prompt: string; example?: string };
@@ -19,6 +19,7 @@ export interface Section {
   flipCards?: { front: string; back: string }[];
   checklistItems?: string[];
   glossary?: { term: string; definition: string; example?: string }[];
+  imageData?: { url: string; alt: string; caption?: string; width?: string; height?: string };
 }
 
 export const chapters: ChapterContent[] = [
@@ -94,6 +95,17 @@ export const chapters: ChapterContent[] = [
     color: "#FF8C42",
     audience: "全員必讀",
     sections: [
+      {
+        id: "ch2-s0",
+        title: "核心知識點全景圖",
+        type: "image",
+        content: "好創新人教學系統的完整知識架構，涵蓋企劃、剪輯、AI 自動化、Manus 工作流的所有核心知識點。",
+        imageData: {
+          url: "https://d2xsxph8kpxj0f.cloudfront.net/310519663065041882/AXapHhDJFofYFuSSWpHADU/mindmap_core_knowledge-PQozBDHAy7wuXLsWzk3Ssh.webp",
+          alt: "好創核心知識點心智圖",
+          caption: "5 大知識維度 × 4 個 Level × 完整的企業級新人教學系統"
+        }
+      },
       {
         id: "ch2-s1",
         title: "四個學習階段",
