@@ -1,7 +1,8 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Layers, Target, Rocket, Film, Zap, Brain, 
-  BarChart3, Users, X, ExternalLink, Trophy, BookMarked, Sun, Moon
+  BarChart3, Users, X, ExternalLink, Trophy, BookMarked, Sun, Moon,
+  FileText, Shield, FileSignature
 } from "lucide-react";
 import { chapters } from "@/lib/data";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -15,6 +16,7 @@ interface SidebarProps {
   onClose: () => void;
   activeChapter: number;
   onChapterSelect: (idx: number) => void;
+  onShowDocs?: () => void;
   progress: number;
 }
 
@@ -46,7 +48,7 @@ function ThemeToggle() {
   );
 }
 
-export default function Sidebar({ isOpen, onClose, activeChapter, onChapterSelect, progress }: SidebarProps) {
+export default function Sidebar({ isOpen, onClose, activeChapter, onChapterSelect, onShowDocs, progress }: SidebarProps) {
   return (
     <>
       {/* Mobile Overlay */}
@@ -169,6 +171,16 @@ export default function Sidebar({ isOpen, onClose, activeChapter, onChapterSelec
                 <p className="text-[10px] text-muted-foreground/70 truncate mt-0.5">分類標籤 + 搜尋篩選</p>
               </div>
             </a>
+            <button
+              onClick={() => onShowDocs?.()}
+              className="w-full text-left px-3 py-2.5 rounded-lg transition-all duration-200 group flex items-center gap-2.5 hover:bg-sidebar-accent border border-transparent"
+            >
+              <FileText size={16} className="text-cyan-500" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-muted-foreground group-hover:text-foreground truncate">內部文件</p>
+                <p className="text-[10px] text-muted-foreground/70 truncate mt-0.5">AI 資安 SOP · 合約模板</p>
+              </div>
+            </button>
           </div>
         </div>
 

@@ -11,12 +11,14 @@ import ChapterSection from "@/components/ChapterSection";
 import MilestoneTracker from "@/components/MilestoneTracker";
 import CaseLibrary from "@/components/CaseLibrary";
 import LearningTimeTracker from "@/components/LearningTimeTracker";
+import InternalDocs from "@/components/InternalDocs";
 import { chapters } from "@/lib/data";
 
 export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeChapter, setActiveChapter] = useState(0);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [showDocs, setShowDocs] = useState(false);
   const mainRef = useRef<HTMLDivElement>(null);
 
   const handleScroll = useCallback(() => {
@@ -63,8 +65,12 @@ export default function Home() {
           setActiveChapter(idx);
           setSidebarOpen(false);
         }}
+        onShowDocs={() => setShowDocs(true)}
         progress={scrollProgress}
       />
+
+      {/* Internal Docs Modal */}
+      {showDocs && <InternalDocs onClose={() => setShowDocs(false)} />}
 
       {/* Main Content */}
       <main 
