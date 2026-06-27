@@ -81,6 +81,33 @@
   --sidebar-ring: oklch(0.65 0.18 45);
 }
 
+/* Light Mode Variables */
+:root:not(.dark) {
+  --background: oklch(0.97 0.003 80);
+  --foreground: oklch(0.15 0.01 50);
+  --card: oklch(0.99 0.002 80);
+  --card-foreground: oklch(0.15 0.01 50);
+  --popover: oklch(0.99 0.002 80);
+  --popover-foreground: oklch(0.15 0.01 50);
+  --secondary: oklch(0.94 0.005 80);
+  --secondary-foreground: oklch(0.3 0.01 50);
+  --muted: oklch(0.94 0.005 80);
+  --muted-foreground: oklch(0.45 0.01 50);
+  --accent: oklch(0.95 0.005 80);
+  --accent-foreground: oklch(0.15 0.01 50);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.88 0.005 80);
+  --input: oklch(0.9 0.005 80);
+  --ring: oklch(0.65 0.18 45);
+  --sidebar: oklch(0.98 0.003 80);
+  --sidebar-foreground: oklch(0.15 0.01 50);
+  --sidebar-accent: oklch(0.95 0.005 80);
+  --sidebar-accent-foreground: oklch(0.15 0.01 50);
+  --sidebar-border: oklch(0.9 0.005 80);
+  --sidebar-ring: oklch(0.65 0.18 45);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -235,6 +262,39 @@
   .glow-orange {
     box-shadow: 0 0 20px oklch(0.65 0.18 45 / 20%), 0 0 40px oklch(0.65 0.18 45 / 10%);
   }
+}
+
+/* Light Mode Component Overrides */
+:root:not(.dark) .glass-card {
+  background: oklch(0.99 0.002 80 / 80%);
+  border-color: oklch(0.88 0.005 80 / 60%);
+}
+:root:not(.dark) .glass-card:hover {
+  border-color: oklch(0.65 0.18 45 / 40%);
+  box-shadow: 0 4px 20px oklch(0.65 0.18 45 / 10%);
+}
+:root:not(.dark) .gradient-mesh-bg {
+  background-color: oklch(0.97 0.003 80);
+  background-image:
+    radial-gradient(at 20% 80%, oklch(0.65 0.18 45 / 6%) 0px, transparent 50%),
+    radial-gradient(at 80% 20%, oklch(0.7 0.12 45 / 5%) 0px, transparent 50%),
+    radial-gradient(at 50% 50%, oklch(0.5 0.08 45 / 3%) 0px, transparent 50%);
+}
+:root:not(.dark) .prompt-block {
+  background: oklch(0.96 0.003 80);
+}
+:root:not(.dark) .progress-bar {
+  background: oklch(0.92 0.005 80);
+}
+:root:not(.dark) ::-webkit-scrollbar-thumb {
+  background: oklch(0.8 0.005 80);
+}
+:root:not(.dark) ::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.7 0.005 80);
+}
+:root:not(.dark) ::selection {
+  background: oklch(0.65 0.18 45 / 20%);
+  color: oklch(0.15 0.01 50);
 }
 
 /* Responsive Typography */

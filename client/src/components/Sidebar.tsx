@@ -1,9 +1,10 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Layers, Target, Rocket, Film, Zap, Brain, 
-  BarChart3, Users, X, ExternalLink, Trophy, BookMarked
+  BarChart3, Users, X, ExternalLink, Trophy, BookMarked, Sun, Moon
 } from "lucide-react";
 import { chapters } from "@/lib/data";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const iconMap: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   Layers, Target, Rocket, Film, Zap, Brain, BarChart3, Users
@@ -15,6 +16,34 @@ interface SidebarProps {
   activeChapter: number;
   onChapterSelect: (idx: number) => void;
   progress: number;
+}
+
+function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme();
+  return (
+    <button
+      onClick={toggleTheme}
+      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-border/10 hover:bg-border/20 border border-border/20 transition-all duration-200 group"
+    >
+      <div className="flex items-center gap-2">
+        {theme === "dark" ? (
+          <Moon size={14} className="text-blue-400" />
+        ) : (
+          <Sun size={14} className="text-amber-400" />
+        )}
+        <span className="text-[11px] text-muted-foreground group-hover:text-foreground transition-colors">
+          {theme === "dark" ? "暗色模式" : "亮色模式"}
+        </span>
+      </div>
+      <div className={`w-8 h-4 rounded-full relative transition-colors duration-200 ${
+        theme === "dark" ? "bg-blue-500/30" : "bg-amber-500/30"
+      }`}>
+        <div className={`absolute top-0.5 w-3 h-3 rounded-full transition-all duration-200 ${
+          theme === "dark" ? "left-0.5 bg-blue-400" : "left-[18px] bg-amber-400"
+        }`} />
+      </div>
+    </button>
+  );
 }
 
 export default function Sidebar({ isOpen, onClose, activeChapter, onChapterSelect, progress }: SidebarProps) {
@@ -144,7 +173,9 @@ export default function Sidebar({ isOpen, onClose, activeChapter, onChapterSelec
         </div>
 
         {/* Bottom Links */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-sidebar-border bg-sidebar/80 backdrop-blur-sm">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-sidebar-border bg-sidebar/80 backdrop-blur-sm space-y-3">
+          {/* Theme Toggle */}
+          <ThemeToggle />
           <a
             href="https://app.notion.com/p/38097a06fae5814caf78e93a99dcc243"
             target="_blank"

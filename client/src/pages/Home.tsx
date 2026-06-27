@@ -10,6 +10,7 @@ import HeroSection from "@/components/HeroSection";
 import ChapterSection from "@/components/ChapterSection";
 import MilestoneTracker from "@/components/MilestoneTracker";
 import CaseLibrary from "@/components/CaseLibrary";
+import LearningTimeTracker from "@/components/LearningTimeTracker";
 import { chapters } from "@/lib/data";
 
 export default function Home() {
@@ -73,6 +74,13 @@ export default function Home() {
         <HeroSection />
         
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-32">
+          {/* Learning Time Tracker - Fixed at top of content */}
+          <div className="mb-8 sticky top-2 z-30">
+            <LearningTimeTracker
+              currentChapterId={chapters[activeChapter]?.id || "ch1"}
+              currentChapterTitle={chapters[activeChapter]?.title || ""}
+            />
+          </div>
           {chapters.map((chapter, idx) => (
             <ChapterSection 
               key={chapter.id} 

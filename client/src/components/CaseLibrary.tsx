@@ -118,6 +118,10 @@ const caseStudies: CaseStudy[] = [
 const platforms = ["全部", "Instagram", "TikTok", "YouTube", "Facebook", "多平台"];
 const types = ["全部", "品牌曝光", "導購轉換", "粉絲增長", "互動提升", "私域引流"];
 const industries = ["全部", "餐飲", "美妝保養", "健身", "科技", "美業"];
+const aiToolFilters = ["全部", "ChatGPT", "Claude", "Manus"];
+const strategyTags = ["全部", "Hook 設計", "反差感", "素人感", "Before/After", "私域", "ASMR", "限時優惠", "Advantage+", "LINE 引流", "分眾推送", "回購", "低 CPA", "UGC", "挑戰賽"];
+
+const SEARCH_HISTORY_KEY = "haochuang-case-search-history";
 
 const FAVORITES_KEY = "haochuang-case-favorites";
 
@@ -126,10 +130,15 @@ export default function CaseLibrary() {
   const [selectedPlatform, setSelectedPlatform] = useState("全部");
   const [selectedType, setSelectedType] = useState("全部");
   const [selectedIndustry, setSelectedIndustry] = useState("全部");
+  const [selectedAITool, setSelectedAITool] = useState("全部");
+  const [selectedTag, setSelectedTag] = useState("全部");
   const [expandedCase, setExpandedCase] = useState<string | null>(null);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [exportCopied, setExportCopied] = useState<string | null>(null);
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [showSearchHistory, setShowSearchHistory] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // Load favorites from localStorage
   useEffect(() => {
@@ -137,7 +146,19 @@ export default function CaseLibrary() {
     if (stored) {
       setFavorites(JSON.parse(stored));
     }
+    const history = localStorage.getItem(SEARCH_HISTORY_KEY);
+    if (history) {
+      setSearchHistory(JSON.parse(history));
+    }
   }, []);
+
+  // Save search to history
+  const saveSearchHistory = (query: string) => {
+    if (!query.trim()) return;
+    const updated = [query, ...searchHistory.filter(h => h !== query)].slice(0, 8);
+    setSearchHistory(updated);
+    localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(updated));
+  };
 
   // Save favorites to localStorage
   const toggleFavorite = (caseId: string) => {
@@ -185,27 +206,45 @@ ${cs.tags.map(tag => `#${tag}`).join(" ")}
 
   const filteredCases = useMemo(() => {
     return caseStudies.filter(c => {
+      const q = searchQuery.toLowerCase();
       const matchSearch = searchQuery === "" || 
-        c.title.includes(searchQuery) || 
-        c.strategy.includes(searchQuery) ||
-        c.tags.some(t => t.includes(searchQuery));
+        c.title.toLowerCase().includes(q) || 
+        c.strategy.toLowerCase().includes(q) ||
+        c.client.toLowerCase().includes(q) ||
+        c.result.toLowerCase().includes(q) ||
+        c.aiTools.some(t => t.toLowerCase().includes(q)) ||
+        c.tags.some(t => t.toLowerCase().includes(q));
       const matchPlatform = selectedPlatform === "全部" || c.platform === selectedPlatform;
       const matchType = selectedType === "全部" || c.type === selectedType;
       const matchIndustry = selectedIndustry === "全部" || c.industry === selectedIndustry;
+      const matchAITool = selectedAITool === "全部" || c.aiTools.some(t => t.includes(selectedAITool));
+      const matchTag = selectedTag === "全部" || c.tags.includes(selectedTag);
       const matchFavorites = !showFavoritesOnly || favorites.includes(c.id);
-      return matchSearch && matchPlatform && matchType && matchIndustry && matchFavorites;
+      return matchSearch && matchPlatform && matchType && matchIndustry && matchAITool && matchTag && matchFavorites;
     });
-  }, [searchQuery, selectedPlatform, selectedType, selectedIndustry, showFavoritesOnly, favorites]);
+  }, [searchQuery, selectedPlatform, selectedType, selectedIndustry, selectedAITool, selectedTag, showFavoritesOnly, favorites]);
 
   const clearFilters = () => {
     setSearchQuery("");
     setSelectedPlatform("全部");
     setSelectedType("全部");
     setSelectedIndustry("全部");
+    setSelectedAITool("全部");
+    setSelectedTag("全部");
     setShowFavoritesOnly(false);
   };
 
-  const hasActiveFilters = searchQuery || selectedPlatform !== "全部" || selectedType !== "全部" || selectedIndustry !== "全部" || showFavoritesOnly;
+  const hasActiveFilters = searchQuery || selectedPlatform !== "全部" || selectedType !== "全部" || selectedIndustry !== "全部" || selectedAITool !== "全部" || selectedTag !== "全部" || showFavoritesOnly;
+
+  // Highlight search text in results
+  const highlightText = (text: string, query: string) => {
+    if (!query.trim()) return text;
+    const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const parts = text.split(regex);
+    return parts.map((part, i) => 
+      regex.test(part) ? <mark key={i} className="bg-[#F37021]/20 text-[#F37021] rounded px-0.5">{part}</mark> : part
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -219,9 +258,31 @@ ${cs.tags.map(tag => `#${tag}`).join(" ")}
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="搜尋案例（關鍵字、策略、標籤...）"
+              onFocus={() => setShowSearchHistory(true)}
+              onBlur={() => setTimeout(() => setShowSearchHistory(false), 200)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && searchQuery.trim()) {
+                  saveSearchHistory(searchQuery.trim());
+                }
+              }}
+              placeholder="搜尋案例（關鍵字、策略、標籤、AI工具、產業...）"
               className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-border/20 border border-border/30 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:border-[#F37021]/50 focus:ring-1 focus:ring-[#F37021]/20 transition-all"
             />
+            {/* Search History Dropdown */}
+            {showSearchHistory && searchHistory.length > 0 && !searchQuery && (
+              <div className="absolute top-full left-0 right-0 mt-1 p-2 rounded-lg bg-card border border-border/30 shadow-lg z-20">
+                <p className="text-[9px] uppercase tracking-wider text-muted-foreground font-medium px-2 mb-1">搜尋歷史</p>
+                {searchHistory.map((h, i) => (
+                  <button
+                    key={i}
+                    onMouseDown={() => { setSearchQuery(h); setShowSearchHistory(false); }}
+                    className="w-full text-left px-2 py-1.5 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-border/20 transition-colors"
+                  >
+                    {h}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <button
             onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
@@ -243,6 +304,24 @@ ${cs.tags.map(tag => `#${tag}`).join(" ")}
 
         {/* Filter Tabs */}
         <div className="space-y-3">
+          {/* AI Tool Filter */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium w-10">AI</span>
+            {aiToolFilters.map(tool => (
+              <button
+                key={tool}
+                onClick={() => setSelectedAITool(tool)}
+                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all duration-200 ${
+                  selectedAITool === tool 
+                    ? "bg-purple-500/15 text-purple-400 border border-purple-500/30" 
+                    : "text-muted-foreground hover:text-foreground hover:bg-border/20 border border-transparent"
+                }`}
+              >
+                {tool}
+              </button>
+            ))}
+          </div>
+
           {/* Platform */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium w-10">平台</span>
@@ -296,6 +375,33 @@ ${cs.tags.map(tag => `#${tag}`).join(" ")}
               </button>
             ))}
           </div>
+
+          {/* Advanced: Strategy Tags */}
+          <button
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            className="flex items-center gap-1.5 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Filter size={10} />
+            {showAdvancedFilters ? "收起進階篩選" : "展開進階篩選（策略標籤）"}
+          </button>
+          {showAdvancedFilters && (
+            <div className="flex items-center gap-2 flex-wrap pt-1">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium w-10">標籤</span>
+              {strategyTags.map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => setSelectedTag(tag)}
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all duration-200 ${
+                    selectedTag === tag 
+                      ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30" 
+                      : "text-muted-foreground hover:text-foreground hover:bg-border/20 border border-transparent"
+                  }`}
+                >
+                  {tag === "全部" ? tag : `#${tag}`}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Active Filters Clear */}
@@ -345,8 +451,8 @@ ${cs.tags.map(tag => `#${tag}`).join(" ")}
                         {cs.industry}
                       </span>
                     </div>
-                    <h4 className="text-sm font-bold text-foreground">{cs.title}</h4>
-                    <p className="text-[11px] text-muted-foreground mt-1">{cs.client} · {cs.duration}</p>
+                    <h4 className="text-sm font-bold text-foreground">{highlightText(cs.title, searchQuery)}</h4>
+                    <p className="text-[11px] text-muted-foreground mt-1">{highlightText(cs.client, searchQuery)} · {cs.duration}</p>
                   </button>
                   
                   {/* Favorite + Result */}
