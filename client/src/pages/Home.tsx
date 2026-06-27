@@ -12,6 +12,8 @@ import MilestoneTracker from "@/components/MilestoneTracker";
 import CaseLibrary from "@/components/CaseLibrary";
 import LearningTimeTracker from "@/components/LearningTimeTracker";
 import InternalDocs from "@/components/InternalDocs";
+import Leaderboard from "@/components/Leaderboard";
+import DailyQuiz from "@/components/DailyQuiz";
 import { chapters } from "@/lib/data";
 
 export default function Home() {
@@ -115,6 +117,48 @@ export default function Home() {
               </p>
             </div>
             <MilestoneTracker />
+          </div>
+
+          {/* 每日一題 */}
+          <div id="daily-quiz" className="py-16">
+            <div className="mb-10">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold bg-gradient-to-br from-violet-500 to-purple-600" style={{ boxShadow: '0 0 15px rgba(139,92,246,0.4)' }}>
+                  📝
+                </div>
+                <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium">
+                  每日練習
+                </span>
+              </div>
+              <h2 className="font-black text-foreground leading-tight tracking-tight" style={{ fontSize: 'clamp(1.5rem, 4vw, 2.25rem)' }}>
+                每日一題
+              </h2>
+              <p className="mt-2 text-muted-foreground" style={{ fontSize: 'clamp(0.8rem, 2vw, 0.95rem)' }}>
+                每天一題實戰情境題 — 答完可推播到 Slack 讓團隊一起討論
+              </p>
+            </div>
+            <DailyQuiz />
+          </div>
+
+          {/* 新人考核排行榜 */}
+          <div id="leaderboard" className="py-16">
+            <div className="mb-10">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold bg-gradient-to-br from-amber-500 to-orange-600" style={{ boxShadow: '0 0 15px rgba(245,158,11,0.4)' }}>
+                  🏆
+                </div>
+                <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium">
+                  團隊激勵
+                </span>
+              </div>
+              <h2 className="font-black text-foreground leading-tight tracking-tight" style={{ fontSize: 'clamp(1.5rem, 4vw, 2.25rem)' }}>
+                新人考核排行榜
+              </h2>
+              <p className="mt-2 text-muted-foreground" style={{ fontSize: 'clamp(0.8rem, 2vw, 0.95rem)' }}>
+                綜合評分系統 — 學習進度 × 測驗成績 × 學習時間 × 連續天數
+              </p>
+            </div>
+            <Leaderboard />
           </div>
 
           {/* 實戰案例庫 */}

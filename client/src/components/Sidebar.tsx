@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Layers, Target, Rocket, Film, Zap, Brain, 
   BarChart3, Users, X, ExternalLink, Trophy, BookMarked, Sun, Moon,
-  FileText, Shield, FileSignature
+  FileText, Shield, FileSignature, Medal, Sparkles
 } from "lucide-react";
 import { chapters } from "@/lib/data";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -159,6 +159,26 @@ export default function Sidebar({ isOpen, onClose, activeChapter, onChapterSelec
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-muted-foreground group-hover:text-foreground truncate">新人 30 天里程碑</p>
                 <p className="text-[10px] text-muted-foreground/70 truncate mt-0.5">互動式進度追蹤</p>
+              </div>
+            </a>
+            <a
+              href="#daily-quiz"
+              className="w-full text-left px-3 py-2.5 rounded-lg transition-all duration-200 group flex items-center gap-2.5 hover:bg-sidebar-accent border border-transparent"
+            >
+              <Sparkles size={16} className="text-violet-500" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-muted-foreground group-hover:text-foreground truncate">每日一題</p>
+                <p className="text-[10px] text-muted-foreground/70 truncate mt-0.5">推播到 Slack</p>
+              </div>
+            </a>
+            <a
+              href="#leaderboard"
+              className="w-full text-left px-3 py-2.5 rounded-lg transition-all duration-200 group flex items-center gap-2.5 hover:bg-sidebar-accent border border-transparent"
+            >
+              <Medal size={16} className="text-amber-500" />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-muted-foreground group-hover:text-foreground truncate">考核排行榜</p>
+                <p className="text-[10px] text-muted-foreground/70 truncate mt-0.5">團隊學習競賽</p>
               </div>
             </a>
             <a
