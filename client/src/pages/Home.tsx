@@ -21,6 +21,7 @@ export default function Home() {
   const [activeChapter, setActiveChapter] = useState(0);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [showDocs, setShowDocs] = useState(false);
+  const [userSelectedChapter, setUserSelectedChapter] = useState<number | null>(null);
   const mainRef = useRef<HTMLDivElement>(null);
 
   const handleScroll = useCallback(() => {
@@ -28,6 +29,8 @@ export default function Home() {
     const { scrollTop, scrollHeight, clientHeight } = mainRef.current;
     const progress = scrollTop / (scrollHeight - clientHeight);
     setScrollProgress(Math.min(progress, 1));
+    // 用戶滾動時清除手動選擇狀態
+    setUserSelectedChapter(null);
   }, []);
 
   useEffect(() => {
@@ -65,7 +68,15 @@ export default function Home() {
         activeChapter={activeChapter}
         onChapterSelect={(idx) => {
           setActiveChapter(idx);
+          setUserSelectedChapter(idx);
           setSidebarOpen(false);
+          // 滾動到對應章節
+          setTimeout(() => {
+            const element = document.getElementById(`chapter-${chapters[idx]?.id}`);
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }, 100);
         }}
         onShowDocs={() => setShowDocs(true)}
         progress={scrollProgress}
@@ -90,12 +101,18 @@ export default function Home() {
             />
           </div>
           {chapters.map((chapter, idx) => (
-            <ChapterSection 
-              key={chapter.id} 
-              chapter={chapter} 
-              index={idx}
-              onVisible={() => setActiveChapter(idx)}
-            />
+            <div key={chapter.id} id={`chapter-${chapter.id}`}>
+              <ChapterSection 
+                chapter={chapter} 
+                index={idx}
+                onVisible={() => {
+                  // 只在用戶沒有主動選擇時才更新
+                  if (userSelectedChapter === null) {
+                    setActiveChapter(idx);
+                  }
+                }}
+              />
+            </div>
           ))}
 
           {/* 新人 30 天里程碑 */}
