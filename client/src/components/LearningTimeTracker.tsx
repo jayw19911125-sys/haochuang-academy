@@ -187,8 +187,8 @@ export default function LearningTimeTracker({ currentChapterId, currentChapterTi
         </div>
       </button>
 
-      {/* Current Chapter Progress Bar */}
-      <div className="mt-3 pt-3 border-t border-border/20">
+      {/* Current Chapter Progress Bar - hidden on mobile when collapsed */}
+      <div className={`mt-3 pt-3 border-t border-border/20 ${!isExpanded ? 'hidden sm:block' : ''}`}>
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-[10px] text-muted-foreground">本章建議學習時間</span>
           <span className="text-[10px] font-mono text-muted-foreground">

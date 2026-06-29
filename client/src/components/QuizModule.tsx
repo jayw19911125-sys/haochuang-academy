@@ -177,8 +177,8 @@ export default function QuizModule({ chapterId, chapterTitle, nextChapterId }: Q
             </span>
             <p className="text-[10px] text-muted-foreground">
               {passed 
-                ? `已通過 · 下一章已解鎖` 
-                : `5 題實戰情境題 · 通過 ${passThreshold}/5 題解鎖下一章`
+                ? `已通過 · 繼續學習下一章` 
+                : `5 題實戰情境題 · 通過 ${passThreshold}/5 題即為合格`
               }
             </p>
           </div>

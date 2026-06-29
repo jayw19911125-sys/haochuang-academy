@@ -100,7 +100,7 @@ export default function Sidebar({ isOpen, onClose, activeChapter, onChapterSelec
         </div>
 
         {/* Chapter List */}
-        <nav className="p-3 overflow-y-auto h-[calc(100vh-200px)]">
+        <nav className="p-3 overflow-y-auto" style={{ height: 'calc(100vh - 200px - 100px)' }}>
           <ul className="space-y-1">
             {chapters.map((chapter, idx) => {
               const Icon = iconMap[chapter.icon] || Layers;
@@ -205,7 +205,7 @@ export default function Sidebar({ isOpen, onClose, activeChapter, onChapterSelec
         </div>
 
         {/* Bottom Links */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-sidebar-border bg-sidebar/80 backdrop-blur-sm space-y-3">
+        <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-sidebar-border bg-sidebar/95 backdrop-blur-sm space-y-2">
           {/* Theme Toggle */}
           <ThemeToggle />
           <a

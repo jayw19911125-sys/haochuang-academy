@@ -119,7 +119,12 @@ interface DailyQuizState {
 type FilterType = "all" | "correct" | "incorrect" | "unanswered";
 
 function getTodayKey(): string {
-  return new Date().toISOString().split("T")[0];
+  // 使用台灣時區 (UTC+8) 確保日期正確
+  const now = new Date();
+  const taiwanOffset = 8 * 60; // UTC+8 in minutes
+  const utcMinutes = now.getTime() / 60000 + now.getTimezoneOffset();
+  const taiwanTime = new Date((utcMinutes + taiwanOffset) * 60000);
+  return taiwanTime.toISOString().split("T")[0];
 }
 
 function getQuestionForDate(dateStr: string): DailyQuestion {
@@ -177,8 +182,11 @@ function formatDate(dateStr: string): string {
 function getPastDays(count: number): string[] {
   const days: string[] = [];
   for (let i = 1; i <= count; i++) {
-    const d = new Date(Date.now() - i * 86400000);
-    days.push(d.toISOString().split("T")[0]);
+    const now = new Date(Date.now() - i * 86400000);
+    const taiwanOffset = 8 * 60;
+    const utcMinutes = now.getTime() / 60000 + now.getTimezoneOffset();
+    const taiwanTime = new Date((utcMinutes + taiwanOffset) * 60000);
+    days.push(taiwanTime.toISOString().split("T")[0]);
   }
   return days;
 }
@@ -220,13 +228,15 @@ export default function DailyQuiz({ onSendToSlack }: DailyQuizProps) {
       
       if (onSendToSlack) {
         onSendToSlack(message);
+        const newState = { ...state, sentToSlack: true };
+        setState(newState);
+        saveDailyQuizState(newState);
+        setSendSuccess(true);
+        setTimeout(() => setSendSuccess(false), 3000);
+      } else {
+        // 無回調時提示用戶功能尚未連接
+        alert("Slack 推播功能需要管理員配置。請聯繫子權開啟此功能。");
       }
-      
-      const newState = { ...state, sentToSlack: true };
-      setState(newState);
-      saveDailyQuizState(newState);
-      setSendSuccess(true);
-      setTimeout(() => setSendSuccess(false), 3000);
     } catch (err) {
       console.error("Failed to send to Slack:", err);
     } finally {

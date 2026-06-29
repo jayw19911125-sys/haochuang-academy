@@ -47,22 +47,21 @@ function syncSelfData(entries: LeaderboardEntry[]): LeaderboardEntry[] {
   const updated = entries.map(entry => {
     if (entry.id !== "user-self") return entry;
     
-    // Pull quiz data
+    // Pull quiz data from haochuang-quiz-progress (single object with chapter keys)
     let totalScore = 0;
     let quizCount = 0;
-    for (let i = 1; i <= 14; i++) {
-      const key = `haochuang-quiz-ch${i}`;
-      const data = localStorage.getItem(key);
-      if (data) {
-        try {
-          const parsed = JSON.parse(data);
-          if (parsed.passed) {
-            totalScore += (parsed.score / parsed.total) * 100;
+    try {
+      const quizProgress = localStorage.getItem("haochuang-quiz-progress");
+      if (quizProgress) {
+        const progress = JSON.parse(quizProgress);
+        for (const chKey of Object.keys(progress)) {
+          if (progress[chKey]?.passed) {
             quizCount++;
+            totalScore += 100; // 通過即為滿分
           }
-        } catch {}
+        }
       }
-    }
+    } catch {}
     
     // Pull learning time data
     let totalTime = 0;

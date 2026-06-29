@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   BookOpen, Zap, Film, Target, Brain, BarChart3, 
   ChevronRight, Copy, Check, Menu, X, ExternalLink,
-  Layers, Rocket, Users, Clock, ArrowRight, Sparkles
+  Layers, Rocket, Users, Clock, ArrowRight, Sparkles, ChevronUp
 } from "lucide-react";
 import Sidebar from "@/components/Sidebar";
 import HeroSection from "@/components/HeroSection";
@@ -24,13 +24,19 @@ export default function Home() {
   const [userSelectedChapter, setUserSelectedChapter] = useState<number | null>(null);
   const mainRef = useRef<HTMLDivElement>(null);
 
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const scrollLockRef = useRef(false);
+
   const handleScroll = useCallback(() => {
     if (!mainRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = mainRef.current;
     const progress = scrollTop / (scrollHeight - clientHeight);
     setScrollProgress(Math.min(progress, 1));
-    // 用戶滾動時清除手動選擇狀態
-    setUserSelectedChapter(null);
+    setShowScrollTop(scrollTop > 600);
+    // 只在非鎖定狀態下清除手動選擇
+    if (!scrollLockRef.current) {
+      setUserSelectedChapter(null);
+    }
   }, []);
 
   useEffect(() => {
@@ -70,12 +76,16 @@ export default function Home() {
           setActiveChapter(idx);
           setUserSelectedChapter(idx);
           setSidebarOpen(false);
-          // 滾動到對應章節
+          scrollLockRef.current = true;
+          // 滾動到對應章節，考慮 sticky tracker 高度
           setTimeout(() => {
             const element = document.getElementById(`chapter-${chapters[idx]?.id}`);
-            if (element) {
-              element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (element && mainRef.current) {
+              const offset = element.offsetTop - 80; // sticky tracker height offset
+              mainRef.current.scrollTo({ top: offset, behavior: 'smooth' });
             }
+            // 滾動完成後解鎖
+            setTimeout(() => { scrollLockRef.current = false; }, 800);
           }, 100);
         }}
         onShowDocs={() => setShowDocs(true)}
@@ -217,6 +227,18 @@ export default function Home() {
           </div>
         </footer>
       </main>
+
+      {/* Scroll to Top */}
+      {showScrollTop && (
+        <button
+          onClick={() => mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+          className="fixed bottom-6 right-6 z-40 w-10 h-10 rounded-full bg-[#F37021] text-white shadow-lg flex items-center justify-center hover:bg-[#FF8C42] transition-all duration-200 active:scale-95"
+          style={{ boxShadow: '0 4px 20px rgba(243,112,33,0.3)' }}
+          aria-label="回到頂部"
+        >
+          <ChevronUp size={20} />
+        </button>
+      )}
     </div>
   );
 }

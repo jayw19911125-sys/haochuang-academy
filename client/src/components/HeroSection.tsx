@@ -3,7 +3,7 @@ import { Sparkles, ArrowDown } from "lucide-react";
 
 export default function HeroSection() {
   return (
-    <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden px-4">
+    <section className="relative min-h-[60vh] sm:min-h-[70vh] flex items-center justify-center overflow-hidden px-4 py-16">
       {/* Gradient Mesh Background */}
       <div className="absolute inset-0">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#F37021]/10 rounded-full blur-[120px] animate-pulse" />
@@ -69,16 +69,16 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4, ease: [0.23, 1, 0.32, 1] }}
-          className="mt-10 grid grid-cols-3 gap-4 max-w-md mx-auto"
+          className="mt-8 sm:mt-10 grid grid-cols-3 gap-2 sm:gap-4 max-w-md mx-auto"
         >
           {[
             { value: "14", label: "章節" },
             { value: "8", label: "AI Prompt" },
             { value: "60%", label: "效率提升" }
           ].map((stat, i) => (
-            <div key={i} className="glass-card px-4 py-3">
-              <div className="text-xl font-black text-[#F37021]">{stat.value}</div>
-              <div className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">{stat.label}</div>
+            <div key={i} className="glass-card px-3 sm:px-4 py-2.5 sm:py-3">
+              <div className="text-lg sm:text-xl font-black text-[#F37021]">{stat.value}</div>
+              <div className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">{stat.label}</div>
             </div>
           ))}
         </motion.div>

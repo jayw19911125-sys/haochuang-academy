@@ -307,3 +307,25 @@
     padding: 1rem;
   }
 }
+
+/* Touch device: disable hover effects that "stick" */
+@media (hover: none) {
+  .glass-card:hover {
+    border-color: oklch(0.25 0.01 50 / 40%);
+    box-shadow: none;
+  }
+  :root:not(.dark) .glass-card:hover {
+    border-color: oklch(0.88 0.005 80 / 60%);
+    box-shadow: none;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
