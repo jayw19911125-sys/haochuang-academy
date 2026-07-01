@@ -96,28 +96,102 @@ export default function Sidebar({ isOpen, onClose, activeChapter, onChapterSelec
                 ? Object.values(chapterCompletion).filter(Boolean).length 
                 : 0;
               const percentage = Math.round((completedCount / totalChapters) * 100);
+              
+              // 里程碑鼓勵提示
+              const getMilestoneMessage = () => {
+                if (completedCount === totalChapters) return { text: "✨ 全部完成！你已經是好創即戰力！", color: "text-emerald-400", glow: true };
+                if (completedCount >= 12) return { text: "🔥 就差最後一哩路！", color: "text-emerald-400", glow: false };
+                if (completedCount >= 10) return { text: "🚀 已過 70%，即將畢業！", color: "text-blue-400", glow: false };
+                if (completedCount >= 7) return { text: "💪 過半了！繼續保持", color: "text-amber-400", glow: false };
+                if (completedCount >= 4) return { text: "⚡ 很好的節奏，繼續前進", color: "text-amber-400/70", glow: false };
+                if (completedCount >= 1) return { text: "🌱 已起步，加油！", color: "text-muted-foreground", glow: false };
+                return { text: "開始你的學習之旅", color: "text-muted-foreground/60", glow: false };
+              };
+              const milestone = getMilestoneMessage();
+              
               return (
                 <>
-                  <div className="flex justify-between items-center mb-1.5">
+                  {/* 進度數字 + 標題 */}
+                  <div className="flex justify-between items-center mb-2">
                     <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">學習進度</span>
-                    <span className="text-[10px] font-mono text-[#F37021]">{percentage}%</span>
+                    <motion.span 
+                      key={percentage}
+                      initial={{ opacity: 0, y: -8, scale: 1.2 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                      className="text-[11px] font-bold font-mono text-[#F37021]"
+                    >
+                      {percentage}%
+                    </motion.span>
                   </div>
-                  <div className="progress-bar relative">
-                    <div 
-                      className="progress-bar-fill transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]" 
-                      style={{ width: `${percentage}%` }} 
+                  
+                  {/* 進度條 - 帶發光效果 */}
+                  <div className="relative h-2 bg-border/20 rounded-full overflow-hidden">
+                    <motion.div 
+                      className="absolute inset-y-0 left-0 rounded-full"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${percentage}%` }}
+                      transition={{ 
+                        duration: 0.8, 
+                        ease: [0.23, 1, 0.32, 1],
+                        delay: 0.1
+                      }}
+                      style={{
+                        background: percentage === 100 
+                          ? "linear-gradient(90deg, #10b981, #34d399, #6ee7b7)" 
+                          : percentage >= 50 
+                            ? "linear-gradient(90deg, #F37021, #FF8C42, #FFB347)" 
+                            : "linear-gradient(90deg, #F37021, #FF8C42)",
+                        boxShadow: percentage > 0 ? "0 0 8px rgba(243, 112, 33, 0.4)" : "none"
+                      }}
                     />
+                    {/* 進度條尾端發光點 */}
+                    {percentage > 0 && percentage < 100 && (
+                      <motion.div
+                        className="absolute top-0 bottom-0 w-2 rounded-full bg-white/40"
+                        animate={{ opacity: [0.4, 0.8, 0.4] }}
+                        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                        style={{ left: `calc(${percentage}% - 4px)` }}
+                      />
+                    )}
                   </div>
-                  <div className="flex items-center justify-between mt-1.5">
+                  
+                  {/* 里程碑提示 + 章節計數 */}
+                  <div className="flex items-center justify-between mt-2">
                     <span className="text-[9px] text-muted-foreground/60">
                       已通過 {completedCount} / {totalChapters} 章
                     </span>
-                    {completedCount === totalChapters && (
-                      <span className="text-[9px] text-emerald-400 font-medium">✨ 全部完成！</span>
-                    )}
-                    {completedCount > 0 && completedCount < totalChapters && (
-                      <span className="text-[9px] text-amber-400/70">加油！</span>
-                    )}
+                    <motion.span 
+                      key={milestone.text}
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+                      className={`text-[9px] font-medium ${milestone.color} ${milestone.glow ? "animate-pulse" : ""}`}
+                    >
+                      {milestone.text}
+                    </motion.span>
+                  </div>
+                  
+                  {/* 章節小圓點進度指示器 */}
+                  <div className="flex items-center gap-[3px] mt-2.5">
+                    {Array.from({ length: totalChapters }).map((_, i) => {
+                      const chapterIds = Object.keys(chapterCompletion || {});
+                      const allChapterIds = chapters.map(c => c.id);
+                      const isComplete = chapterCompletion?.[allChapterIds[i]] === true;
+                      return (
+                        <motion.div
+                          key={i}
+                          initial={{ scale: 0.5, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ delay: i * 0.03, duration: 0.2 }}
+                          className={`flex-1 h-[3px] rounded-full transition-all duration-500 ${
+                            isComplete 
+                              ? "bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.5)]" 
+                              : "bg-border/30"
+                          }`}
+                        />
+                      );
+                    })}
                   </div>
                 </>
               );
