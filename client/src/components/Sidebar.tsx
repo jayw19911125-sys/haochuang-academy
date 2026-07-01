@@ -88,15 +88,40 @@ export default function Sidebar({ isOpen, onClose, activeChapter, onChapterSelec
             </div>
           </div>
           
-          {/* Overall Progress */}
+          {/* Overall Learning Progress - 整體學習進度條 */}
           <div className="mt-4">
-            <div className="flex justify-between items-center mb-1.5">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">閱讀進度</span>
-              <span className="text-[10px] font-mono text-[#F37021]">{Math.round(progress * 100)}%</span>
-            </div>
-            <div className="progress-bar">
-              <div className="progress-bar-fill" style={{ width: `${progress * 100}%` }} />
-            </div>
+            {(() => {
+              const totalChapters = 14;
+              const completedCount = chapterCompletion 
+                ? Object.values(chapterCompletion).filter(Boolean).length 
+                : 0;
+              const percentage = Math.round((completedCount / totalChapters) * 100);
+              return (
+                <>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">學習進度</span>
+                    <span className="text-[10px] font-mono text-[#F37021]">{percentage}%</span>
+                  </div>
+                  <div className="progress-bar relative">
+                    <div 
+                      className="progress-bar-fill transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]" 
+                      style={{ width: `${percentage}%` }} 
+                    />
+                  </div>
+                  <div className="flex items-center justify-between mt-1.5">
+                    <span className="text-[9px] text-muted-foreground/60">
+                      已通過 {completedCount} / {totalChapters} 章
+                    </span>
+                    {completedCount === totalChapters && (
+                      <span className="text-[9px] text-emerald-400 font-medium">✨ 全部完成！</span>
+                    )}
+                    {completedCount > 0 && completedCount < totalChapters && (
+                      <span className="text-[9px] text-amber-400/70">加油！</span>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
 

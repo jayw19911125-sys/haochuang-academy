@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2, XCircle, Trophy, Lock, RotateCcw, ChevronDown } from "lucide-react";
+import { CheckCircle2, XCircle, Trophy, Lock, RotateCcw, ChevronDown, Bookmark, BookmarkCheck, BookOpen } from "lucide-react";
+
 
 interface QuizQuestion {
   id: string;
@@ -119,6 +120,19 @@ const chapterQuizzes: Record<string, QuizQuestion[]> = {
 };
 
 const STORAGE_KEY = "haochuang-quiz-progress";
+const WRONG_NOTES_KEY = "haochuang-wrong-notes";
+
+export interface WrongNote {
+  questionId: string;
+  chapterId: string;
+  chapterTitle: string;
+  question: string;
+  options: string[];
+  correctIndex: number;
+  userAnswer: number;
+  explanation: string;
+  timestamp: number;
+}
 
 export default function QuizModule({ chapterId, chapterTitle, nextChapterId }: QuizModuleProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -128,6 +142,58 @@ export default function QuizModule({ chapterId, chapterTitle, nextChapterId }: Q
   const [answers, setAnswers] = useState<(number | null)[]>([]);
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [passed, setPassed] = useState(false);
+  const [savedWrongNotes, setSavedWrongNotes] = useState<Set<string>>(new Set());
+  const [showWrongNotebook, setShowWrongNotebook] = useState(false);
+  const [wrongNotes, setWrongNotes] = useState<WrongNote[]>([]);
+
+  // Load wrong notes from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem(WRONG_NOTES_KEY);
+    if (stored) {
+      const notes: WrongNote[] = JSON.parse(stored);
+      setWrongNotes(notes);
+      setSavedWrongNotes(new Set(notes.map(n => n.questionId)));
+    }
+  }, []);
+
+  // Save wrong note to localStorage
+  const saveWrongNote = (q: QuizQuestion, userAns: number) => {
+    const stored = localStorage.getItem(WRONG_NOTES_KEY);
+    const notes: WrongNote[] = stored ? JSON.parse(stored) : [];
+    // 避免重複
+    if (notes.some(n => n.questionId === q.id)) return;
+    const newNote: WrongNote = {
+      questionId: q.id,
+      chapterId,
+      chapterTitle,
+      question: q.question,
+      options: q.options,
+      correctIndex: q.correctIndex,
+      userAnswer: userAns,
+      explanation: q.explanation,
+      timestamp: Date.now()
+    };
+    const updated = [newNote, ...notes];
+    localStorage.setItem(WRONG_NOTES_KEY, JSON.stringify(updated));
+    setWrongNotes(updated);
+    setSavedWrongNotes(prev => { const next = new Set(Array.from(prev)); next.add(q.id); return next; });
+    window.dispatchEvent(new Event("wrong-notes-updated"));
+  };
+
+  // Remove wrong note
+  const removeWrongNote = (questionId: string) => {
+    const stored = localStorage.getItem(WRONG_NOTES_KEY);
+    const notes: WrongNote[] = stored ? JSON.parse(stored) : [];
+    const updated = notes.filter(n => n.questionId !== questionId);
+    localStorage.setItem(WRONG_NOTES_KEY, JSON.stringify(updated));
+    setWrongNotes(updated);
+    setSavedWrongNotes(prev => {
+      const next = new Set(prev);
+      next.delete(questionId);
+      return next;
+    });
+    window.dispatchEvent(new Event("wrong-notes-updated"));
+  };
 
   const questions = chapterQuizzes[chapterId] || [];
   const passThreshold = Math.ceil(questions.length * 0.8); // 80% = 4/5
@@ -487,12 +553,64 @@ export default function QuizModule({ chapterId, chapterTitle, nextChapterId }: Q
                     </motion.div>
                   )}
 
+                  {/* 錯題收錄按鈕 */}
+                  {!passed && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.75 }}
+                      className="mt-4 p-3 rounded-lg bg-amber-500/5 border border-amber-500/15"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Bookmark size={12} className="text-amber-400" />
+                          <span className="text-[11px] font-semibold text-amber-400">錯題收錄</span>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground">點擊收藏到錯題本</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {questions.map((q, i) => {
+                          const userAnswer = answers[i];
+                          const isWrong = userAnswer !== null && userAnswer !== undefined && userAnswer !== q.correctIndex;
+                          const lastQuestionWrong = i === questions.length - 1 && selectedAnswer !== q.correctIndex;
+                          if (!isWrong && !lastQuestionWrong) return null;
+                          const isSaved = savedWrongNotes.has(q.id);
+                          const userAns = i === questions.length - 1 ? (selectedAnswer ?? 0) : (userAnswer ?? 0);
+                          return (
+                            <button
+                              key={q.id}
+                              onClick={() => isSaved ? removeWrongNote(q.id) : saveWrongNote(q, userAns)}
+                              className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-md text-left transition-all duration-200 ${
+                                isSaved 
+                                  ? "bg-amber-500/10 border border-amber-500/30" 
+                                  : "bg-border/10 border border-border/20 hover:border-amber-500/30 hover:bg-amber-500/5"
+                              }`}
+                            >
+                              {isSaved 
+                                ? <BookmarkCheck size={12} className="text-amber-400 shrink-0" />
+                                : <Bookmark size={12} className="text-muted-foreground shrink-0" />
+                              }
+                              <span className={`text-[10px] truncate flex-1 ${
+                                isSaved ? "text-amber-400" : "text-muted-foreground"
+                              }`}>
+                                Q{i + 1}. {q.question.slice(0, 30)}...
+                              </span>
+                              <span className="text-[9px] text-muted-foreground/50">
+                                {isSaved ? "已收藏" : "收藏"}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+
                   {/* 操作按鈕 */}
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.8 }}
-                    className="mt-6"
+                    className="mt-6 space-y-3"
                   >
                     {!passed && (
                       <button
@@ -507,7 +625,92 @@ export default function QuizModule({ chapterId, chapterTitle, nextChapterId }: Q
                         <p className="text-[10px] text-emerald-400/60 animate-pulse">✔ 本章考核已完成</p>
                       </div>
                     )}
+
+                    {/* 錯題本入口 */}
+                    {wrongNotes.length > 0 && (
+                      <button
+                        onClick={() => setShowWrongNotebook(!showWrongNotebook)}
+                        className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-amber-500/20 bg-amber-500/5 text-amber-400 text-xs font-medium hover:bg-amber-500/10 transition-all duration-200"
+                      >
+                        <BookOpen size={13} />
+                        我的錯題本（{wrongNotes.length} 題）
+                        <ChevronDown size={12} className={`transition-transform duration-200 ${showWrongNotebook ? "rotate-180" : ""}`} />
+                      </button>
+                    )}
                   </motion.div>
+
+                  {/* 錯題本展開區塊 */}
+                  <AnimatePresence>
+                    {showWrongNotebook && wrongNotes.length > 0 && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+                        className="overflow-hidden"
+                      >
+                        <div className="mt-4 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[11px] font-semibold text-amber-400 flex items-center gap-1.5">
+                              <BookOpen size={12} /> 錯題本 · 集中複習
+                            </p>
+                            <span className="text-[10px] text-muted-foreground">
+                              共 {wrongNotes.length} 題
+                            </span>
+                          </div>
+                          <div className="space-y-2.5 max-h-[400px] overflow-y-auto pr-1">
+                            {wrongNotes.map((note, idx) => (
+                              <motion.div
+                                key={note.questionId}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: idx * 0.05 }}
+                                className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/15 relative group"
+                              >
+                                <button
+                                  onClick={() => removeWrongNote(note.questionId)}
+                                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-red-500/10"
+                                  title="移除此題"
+                                >
+                                  <XCircle size={12} className="text-red-400/60" />
+                                </button>
+                                <div className="flex items-center gap-1.5 mb-1.5">
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-border/20 text-muted-foreground">
+                                    {note.chapterTitle.replace(/^[壹貳參肆伍陸柒捌玖拾]+、/, "").slice(0, 10)}
+                                  </span>
+                                  <span className="text-[9px] text-muted-foreground/50">
+                                    {new Date(note.timestamp).toLocaleDateString("zh-TW", { month: "short", day: "numeric" })}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] font-medium text-foreground/90 mb-2 leading-relaxed">
+                                  {note.question}
+                                </p>
+                                <div className="space-y-1 mb-2">
+                                  {note.options.map((opt, oi) => (
+                                    <div
+                                      key={oi}
+                                      className={`text-[10px] px-2 py-1 rounded ${
+                                        oi === note.correctIndex
+                                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                          : oi === note.userAnswer
+                                            ? "bg-red-500/10 text-red-400/80 border border-red-500/20 line-through"
+                                            : "text-muted-foreground/60"
+                                      }`}
+                                    >
+                                      {String.fromCharCode(65 + oi)}. {opt}
+                                    </div>
+                                  ))}
+                                </div>
+                                <p className="text-[10px] text-blue-300/80 leading-relaxed bg-blue-500/5 p-2 rounded">
+                                  💡 {note.explanation}
+                                </p>
+                              </motion.div>
+                            ))}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </motion.div>
               )}
             </div>
