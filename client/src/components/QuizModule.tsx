@@ -73,6 +73,48 @@ const chapterQuizzes: Record<string, QuizQuestion[]> = {
     { id: "ch8-q3", question: "Manus 批量生成一週內容排程，原本需要 2 小時的工作可以壓縮到？", options: ["1 小時", "30 分鐘", "5 分鐘", "10 秒"], correctIndex: 2, explanation: "Manus 可以在 5 分鐘內完成原本需要 2 小時的一週內容排程工作。這是 AI 自動化的核心價值。" },
     { id: "ch8-q4", question: "Manus 自動化的限制是什麼？", options: ["不能連網", "不能取代人的判斷，最終決策需人工審核", "不能處理中文", "只能做文字工作"], correctIndex: 1, explanation: "Manus 的限制：不能取代「人的判斷」。所有自動化產出都需要人工審核後才能發布。AI 是工具，不是決策者。" },
     { id: "ch8-q5", question: "好創的 AI 資安 SOP 中，哪些資料絕對禁止貼入 AI 工具？", options: ["公開的行銷文案", "客戶個資、合約金額、內部財務數據", "已發布的社群貼文", "公開的產業報告"], correctIndex: 1, explanation: "第一級禁止：客戶個資（姓名+電話+地址）、合約金額與條件、內部財務數據、員工薪資。違反即時通報 COO。" }
+  ],
+  ch9: [
+    { id: "ch9-q1", question: "AI Prompt 兵器庫中「武器一」是什麼？最適合用哪個 AI 模型？", options: ["短影音腳本生成器 / GPT-4o", "Meta 廣告文案生成器 / Claude 3.5 Sonnet", "內容日曆發想 / Manus", "爆款拆解分析器 / GPT-4o"], correctIndex: 1, explanation: "武器一是 Meta 廣告文案生成器，使用 Claude 3.5 Sonnet。目的是快速產出高 CTR 的導購文案初稿。" },
+    { id: "ch9-q2", question: "短影音 Hook 發散引擎（武器二）要求每個 Hook 必須用什麼方式產出？", options: ["相同的表達方式", "完全不同的心理學切入點", "不同的語言", "不同的字數"], correctIndex: 1, explanation: "武器二要求產出 10 個 Hook，每個必須用「完全不同的心理學切入點」：恐懼、好奇、反差、數字衝擊、身份認同、社會證明、稀缺性、懸念、共鳴、挑釁。" },
+    { id: "ch9-q3", question: "武器三（短影音腳本結構化生成器）的輸出格式有幾種？", options: ["1 種（純文字）", "2 種（純文字分鏡 + 結構化表格）", "3 種", "4 種"], correctIndex: 1, explanation: "武器三輸出兩種格式：純文字分鏡（時間碼 | 畫面 | 台詞 | 音效）和結構化表格（秒數 | 鏡頭 | 畫面描述 | 台詞 | 字幕效果 | 音效 | 備註）。" },
+    { id: "ch9-q4", question: "武器四（內容日曆主題發想矩陣）的內容配比是？", options: ["導購 50% / IP 50%", "導購 40% / IP 40% / 品牌信任 20%", "全部導購型", "知識 60% / 娛樂 40%"], correctIndex: 1, explanation: "武器四的內容配比：導購型 40% + IP型 40% + 品牌信任 20%。每週 3 支，一個月 12 支完整企劃。" },
+    { id: "ch9-q5", question: "武器七（Manus 批量內容生成指令）可以一次產出多少支腳本變體？", options: ["3 支", "9 支", "27 支", "50 支"], correctIndex: 2, explanation: "武器七可以根據 3 個主題，各生成 9 支變體（不同心理切入點 × 不同表達風格 × 不同時長），共 27 支。" }
+  ],
+  ch10: [
+    { id: "ch10-q1", question: "新人報到第一天必須完成的事項中，不包含以下哪一項？", options: ["註冊 ChatGPT Plus + Claude Pro", "開始接客戶專案", "設定 Monday.com 帳號", "加入 Slack 所有相關頻道"], correctIndex: 1, explanation: "第一天是「認識環境」，不是「開始工作」。必須完成：讀手冊、設定帳號、加入頻道、註冊 AI 工具。接客戶專案是第二週以後的事。" },
+    { id: "ch10-q2", question: "企劃職位新人第一週的作業中，「拆解 10 支爆款短影音」應該用哪個 Prompt 武器？", options: ["武器一（廣告文案）", "武器二（Hook 發散）", "武器六（爆款拆解分析器）", "武器七（批量生成）"], correctIndex: 2, explanation: "武器六（爆款拆解分析器）專門用於系統化拆解爆款影片，提取可複製的成功元素。新人第一週就是要用這個武器拆 10 支。" },
+    { id: "ch10-q3", question: "剪輯師新人第一週必須完成的練習作品，素材從哪裡來？", options: ["自己拍攝", "公司提供的素材", "網路下載", "客戶提供"], correctIndex: 1, explanation: "新人第一週的練習作品使用「公司提供的素材」，不需要自己拍攝。這確保新人專注在剪輯技術本身。" },
+    { id: "ch10-q4", question: "新人第一週作業完成後，應該向誰提交獲得回饋？", options: ["CEO 涵勻", "COO 子權（企劃）/ 子權+阿韋（剪輯）", "同事互評", "自己檢查就好"], correctIndex: 1, explanation: "企劃新人向子權（COO）提交作業。剪輯新人向子權 + 阿韋提交作品。回饋是成長的關鍵。" },
+    { id: "ch10-q5", question: "新人報到第一天必讀的手冊章節是？", options: ["參（飛輪系統）+ 肆（企劃教學）", "壹（底層邏輯）+ 貳（知識地圖）", "伍（短影音工作流）", "玖（AI Prompt）"], correctIndex: 1, explanation: "第一天必讀：壹（底層邏輯）+ 貳（知識地圖）。這兩章是所有後續學習的基礎，必須先懂公司運作邏輯。" }
+  ],
+  ch11: [
+    { id: "ch11-q1", question: "私域轉化漏斗的第一層是什麼？核心指標是？", options: ["私域引流 / 引流率", "公域曝光 / 觸及率、完播率、Hook Rate", "信任建立 / 開信率", "轉換變現 / 轉換率"], correctIndex: 1, explanation: "第一層是「公域曝光」：短影音/Reels/Shorts 吸引目標受眾注意力。核心指標：觸及率、完播率、Hook Rate。" },
+    { id: "ch11-q2", question: "引流率目標應該設定在多少以上？", options: ["> 1%", "> 3%", "> 10%", "> 20%"], correctIndex: 1, explanation: "引流率目標 > 3%。從公域到私域的轉化，3% 是及格線。低於這個數字代表 CTA 設計有問題。" },
+    { id: "ch11-q3", question: "在台灣市場，哪個平台的引流率最高？", options: ["TikTok（1-3%）", "IG Reels（2-5%）", "LINE OA（5-15%）", "Facebook（2-4%）"], correctIndex: 2, explanation: "LINE OA 在台灣市場引流率最高（5-15%），因為台灣人習慣使用 LINE，「加好友送禮」的誘因效果極強。" },
+    { id: "ch11-q4", question: "私域轉化的第三層「信任建立」的核心指標是？", options: ["粉絲數 > 10000", "開信率 > 30%、互動率 > 10%", "轉換率 > 5%", "分享率 > 20%"], correctIndex: 1, explanation: "第三層「信任建立」的核心指標：開信率 > 30%、互動率 > 10%。在私域持續提供價值才能建立信任。" },
+    { id: "ch11-q5", question: "私域轉化的第五層「復購裂變」的目標復購率是多少？", options: ["> 10%", "> 30%", "> 50%", "> 80%"], correctIndex: 1, explanation: "第五層目標：復購率 > 30%、推薦率 > 10%。老客戶復購 + 推薦新客戶，形成自動增長飛輪。" }
+  ],
+  ch12: [
+    { id: "ch12-q1", question: "TikTok 的演算法邏輯是什麼導向？", options: ["社交導向（粉絲優先）", "興趣導向（不看粉絲數）", "搜尋導向（關鍵字優先）", "時間導向（最新優先）"], correctIndex: 1, explanation: "TikTok = 興趣導向（不看粉絲數）。這意味著新帳號也能爆，只要內容夠好。" },
+    { id: "ch12-q2", question: "YouTube Shorts 的 SEO 價值相比 TikTok 如何？", options: ["相同", "YouTube Shorts 高（搜尋長尾），TikTok 低（內容消失快）", "TikTok 更高", "兩者都沒有 SEO 價值"], correctIndex: 1, explanation: "YouTube Shorts SEO 價值高（搜尋長尾），TikTok SEO 價值低（內容消失快）。知識型內容優先放 Shorts。" },
+    { id: "ch12-q3", question: "「一魚三吃」工作流中，TikTok 版本的最佳時長和節奏是？", options: ["60 秒、慢節奏", "15-30 秒、快節奏（每 1.2 秒切鏡）", "30-60 秒、中等節奏", "5-10 秒、極快節奏"], correctIndex: 1, explanation: "TikTok 版本：15-30 秒快節奏，前 1 秒直接進入衝突點，每 1.2 秒切一次鏡頭，結尾用反轉或懸念。" },
+    { id: "ch12-q4", question: "IG Reels 的演算法是什麼導向？適合什麼風格？", options: ["興趣導向 / 真實粗糙", "社交導向（粉絲優先）/ 美感質感", "搜尋導向 / 知識型", "時間導向 / 即時性"], correctIndex: 1, explanation: "IG Reels = 社交導向（粉絲優先），適合美感質感、中等節奏。受眾年齡 22-38 歲為主。" },
+    { id: "ch12-q5", question: "三大平台中，哪個平台的 Hook 風格應該是「問題/數據/教學」？", options: ["TikTok", "IG Reels", "YouTube Shorts", "Facebook"], correctIndex: 2, explanation: "YouTube Shorts 的 Hook 風格是「問題/數據/教學」，因為它是搜尋導向，受眾年齡 25-45 歲，偏好知識型內容。" }
+  ],
+  ch13: [
+    { id: "ch13-q1", question: "AI 工具分工矩陣中，「腦力激盪 / 發散思考」最適合用哪個工具？", options: ["Claude", "ChatGPT", "Manus", "Midjourney"], correctIndex: 1, explanation: "ChatGPT 最擅長自由聯想、大量產出，適合腦力激盪和發散思考。效率提升 3-5 倍。" },
+    { id: "ch13-q2", question: "三步驟 AI 工作流的正確順序是？", options: ["Manus → Claude → ChatGPT", "Claude → ChatGPT → Manus", "ChatGPT 發散 → Claude 收斂 → Manus 批量生成", "三者同時使用"], correctIndex: 2, explanation: "正確順序：ChatGPT 發散（20-50 個原始想法）→ Claude 收斂（篩選出 5 個精選方向）→ Manus 批量生成（15 支完整腳本）。" },
+    { id: "ch13-q3", question: "AI 資安 SOP 中，哪些資料屬於「第二級：需處理」（可貼但需脫敏）？", options: ["客戶帳號密碼", "客戶名稱改為代號、金額改為範圍", "公開的市場資訊", "已發布的內容"], correctIndex: 1, explanation: "第二級（需處理）：客戶名稱改為代號（如『A 客戶』）、具體金額改為範圍（如『月費 3-5 萬』）、聯絡方式全部移除。" },
+    { id: "ch13-q4", question: "AI 工具安全等級中，Manus 被分類為哪一級？", options: ["C 級（禁止使用）", "B 級（只能處理第三級資料）", "A 級（可處理第二級資料）", "特級（可處理所有資料）"], correctIndex: 2, explanation: "Manus = A 級（企業級加密），可處理第二級資料。ChatGPT、Claude = B 級，只能處理第三級資料。" },
+    { id: "ch13-q5", question: "SEO 內容生產最適合用哪個工具組合？效率提升多少倍？", options: ["ChatGPT 單獨使用 / 3 倍", "Manus + Claude / 5-8 倍", "Midjourney + GPT / 2 倍", "Claude 單獨使用 / 4 倍"], correctIndex: 1, explanation: "SEO 內容最佳組合：Manus 研究 + Claude 撰寫，效率提升 5-8 倍。Manus 負責關鍵字研究和競品分析，Claude 負責高品質寫作。" }
+  ],
+  ch14: [
+    { id: "ch14-q1", question: "2026 年演算法中，完播率的權重佔比是多少？", options: ["10%", "20%", "30%", "50%"], correctIndex: 2, explanation: "完播率權重 30%，是所有指標中最高的。它決定初始推送力度（前 500 人看到後的表現）。" },
+    { id: "ch14-q2", question: "複看率的及格線和優秀線分別是多少？", options: ["> 5% / > 20%", "> 20% / > 50%", "> 30% / > 60%", "> 10% / > 30%"], correctIndex: 1, explanation: "複看率及格線 > 20%，優秀線 > 50%。複看率決定 72 小時後是否繼續推送，是長期流量的關鍵。" },
+    { id: "ch14-q3", question: "2026 年演算法中，「互動品質」的判斷標準是什麼？", options: ["互動數量越多越好", "誰在互動比有多少人互動更重要", "只看按讚數", "只看留言數"], correctIndex: 1, explanation: "2026 年演算法看「誰在互動」比「有多少人互動」更重要。目標客群和意見領袖的互動 = 演算法加分；機器人和互讚群 = 演算法扣分。" },
+    { id: "ch14-q4", question: "影片 0-2 秒的目標是什麼？失敗原因通常是？", options: ["建立期待 / 沒有懸念", "抓住注意力 / 開頭太慢、沒有衝突", "情感高潮 / 平鋪直敘", "複看設計 / 結尾太突然"], correctIndex: 1, explanation: "0-2 秒目標：抓住注意力。技巧：視覺衝擊/爭議問題/反直覺數據。失敗原因：開頭太慢、沒有衝突。" },
+    { id: "ch14-q5", question: "以下哪種互動會被演算法扣分？", options: ["目標客群留言", "意見領袖互動", "互讚群互動（短時間大量相同帳號互動）", "真實用戶分享"], correctIndex: 2, explanation: "互讚群互動 = 演算法扣分。判斷標準：短時間大量相同帳號互動。絕對不參加互讚群，這會殺死帳號。" }
   ]
 };
 
@@ -108,6 +150,8 @@ export default function QuizModule({ chapterId, chapterTitle, nextChapterId }: Q
     const progress = stored ? JSON.parse(stored) : {};
     progress[chapterId] = { passed: didPass, timestamp: Date.now() };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+    // 通知 Sidebar 更新完成狀態
+    window.dispatchEvent(new Event("quiz-progress-updated"));
   };
 
   const handleAnswer = (optionIndex: number) => {
@@ -292,44 +336,178 @@ export default function QuizModule({ chapterId, chapterTitle, nextChapterId }: Q
                   )}
                 </>
               ) : (
-                /* Results */
+                /* Results - 優化版本：過場動畫 + 答錯解析 */
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="text-center py-4"
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
+                  className="py-4"
                 >
-                  <div className={`w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center ${
-                    passed ? "bg-emerald-500/20" : "bg-red-500/20"
-                  }`}>
-                    {passed 
-                      ? <Trophy size={32} className="text-emerald-400" />
-                      : <Lock size={32} className="text-red-400" />
-                    }
-                  </div>
-                  
-                  <h4 className={`text-lg font-bold mb-2 ${passed ? "text-emerald-400" : "text-red-400"}`}>
-                    {passed ? "恭喜通過！" : "未通過"}
-                  </h4>
-                  
-                  <p className="text-sm text-muted-foreground mb-1">
-                    正確率：{correctCount + (selectedAnswer === questions[questions.length - 1]?.correctIndex ? 1 : 0)} / {questions.length}
-                  </p>
-                  
-                  <p className="text-xs text-muted-foreground/70 mb-5">
-                    {passed 
-                      ? nextChapterId ? "下一章已解鎖，繼續學習吧！" : "你已完成所有章節的考核！"
-                      : `需要答對 ${passThreshold} 題才能通過，請重新作答。`
-                    }
-                  </p>
-
-                  {!passed && (
-                    <button
-                      onClick={handleRetry}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#F37021] text-white text-sm font-semibold hover:bg-[#FF8C42] transition-all duration-200 active:scale-[0.97]"
+                  {/* Confetti 效果（通過時） */}
+                  {passed && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl"
                     >
-                      <RotateCcw size={14} /> 重新作答
-                    </button>
+                      {[...Array(12)].map((_, i) => (
+                        <motion.div
+                          key={i}
+                          initial={{ 
+                            opacity: 1, 
+                            y: -20, 
+                            x: `${Math.random() * 100}%`,
+                            rotate: 0,
+                            scale: Math.random() * 0.5 + 0.5
+                          }}
+                          animate={{ 
+                            opacity: 0, 
+                            y: 200, 
+                            rotate: Math.random() * 360,
+                          }}
+                          transition={{ 
+                            duration: 2 + Math.random(), 
+                            delay: Math.random() * 0.5,
+                            ease: "easeOut" 
+                          }}
+                          className={`absolute w-2 h-2 rounded-sm ${
+                            ['bg-emerald-400', 'bg-amber-400', 'bg-[#F37021]', 'bg-blue-400', 'bg-violet-400'][i % 5]
+                          }`}
+                        />
+                      ))}
+                    </motion.div>
                   )}
+
+                  {/* 結果圖示 */}
+                  <div className="text-center">
+                    <motion.div 
+                      initial={{ scale: 0, rotate: -180 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.2 }}
+                      className={`w-20 h-20 rounded-2xl mx-auto mb-4 flex items-center justify-center ${
+                        passed ? "bg-emerald-500/20 shadow-lg shadow-emerald-500/10" : "bg-red-500/20 shadow-lg shadow-red-500/10"
+                      }`}
+                    >
+                      {passed 
+                        ? <Trophy size={36} className="text-emerald-400" />
+                        : <Lock size={36} className="text-red-400" />
+                      }
+                    </motion.div>
+                    
+                    <motion.h4 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                      className={`text-xl font-bold mb-2 ${passed ? "text-emerald-400" : "text-red-400"}`}
+                    >
+                      {passed ? "🎉 恭喜通過！" : "未通過"}
+                    </motion.h4>
+                    
+                    {/* 分數顯示 */}
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.4 }}
+                      className="flex items-center justify-center gap-4 mb-2"
+                    >
+                      <div className="text-center">
+                        <p className={`text-2xl font-black ${passed ? "text-emerald-400" : "text-red-400"}`}>
+                          {correctCount + (selectedAnswer === questions[questions.length - 1]?.correctIndex ? 1 : 0)}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">答對</p>
+                      </div>
+                      <span className="text-muted-foreground/30 text-lg">/</span>
+                      <div className="text-center">
+                        <p className="text-2xl font-black text-foreground/70">{questions.length}</p>
+                        <p className="text-[10px] text-muted-foreground">總題數</p>
+                      </div>
+                    </motion.div>
+                    
+                    <motion.p 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.5 }}
+                      className="text-xs text-muted-foreground/70 mb-5"
+                    >
+                      {passed 
+                        ? "你已掌握本章核心知識，繼續前進吧！"
+                        : `需要答對 ${passThreshold} 題才能通過（正確率 80%）`
+                      }
+                    </motion.p>
+                  </div>
+
+                  {/* 答錯題目詳細解析 */}
+                  {!passed && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.6 }}
+                      className="mt-4 space-y-3"
+                    >
+                      <p className="text-xs font-semibold text-red-400/80 uppercase tracking-wider mb-3">
+                        ❌ 答錯題目解析
+                      </p>
+                      {questions.map((q, i) => {
+                        const userAnswer = answers[i];
+                        const isWrong = userAnswer !== null && userAnswer !== undefined && userAnswer !== q.correctIndex;
+                        // 最後一題用 selectedAnswer
+                        const lastQuestionWrong = i === questions.length - 1 && selectedAnswer !== q.correctIndex;
+                        
+                        if (!isWrong && !lastQuestionWrong) return null;
+                        
+                        return (
+                          <motion.div
+                            key={q.id}
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.7 + i * 0.1 }}
+                            className="p-3 rounded-lg bg-red-500/5 border border-red-500/15"
+                          >
+                            <p className="text-xs font-medium text-foreground/90 mb-1.5">
+                              Q{i + 1}. {q.question}
+                            </p>
+                            <div className="flex items-start gap-2 mb-1">
+                              <span className="text-[10px] text-red-400 shrink-0">你的答案：</span>
+                              <span className="text-[10px] text-red-400/80 line-through">
+                                {q.options[i === questions.length - 1 ? (selectedAnswer ?? 0) : (userAnswer ?? 0)]}
+                              </span>
+                            </div>
+                            <div className="flex items-start gap-2 mb-1.5">
+                              <span className="text-[10px] text-emerald-400 shrink-0">正確答案：</span>
+                              <span className="text-[10px] text-emerald-400/80">
+                                {q.options[q.correctIndex]}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-blue-300/80 leading-relaxed">
+                              💡 {q.explanation}
+                            </p>
+                          </motion.div>
+                        );
+                      })}
+                    </motion.div>
+                  )}
+
+                  {/* 操作按鈕 */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.8 }}
+                    className="mt-6"
+                  >
+                    {!passed && (
+                      <button
+                        onClick={handleRetry}
+                        className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-lg bg-[#F37021] text-white text-sm font-semibold hover:bg-[#FF8C42] transition-all duration-200 active:scale-[0.97]"
+                      >
+                        <RotateCcw size={14} /> 重新作答
+                      </button>
+                    )}
+                    {passed && (
+                      <div className="text-center">
+                        <p className="text-[10px] text-emerald-400/60 animate-pulse">✔ 本章考核已完成</p>
+                      </div>
+                    )}
+                  </motion.div>
                 </motion.div>
               )}
             </div>

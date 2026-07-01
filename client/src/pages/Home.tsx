@@ -22,7 +22,32 @@ export default function Home() {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [showDocs, setShowDocs] = useState(false);
   const [userSelectedChapter, setUserSelectedChapter] = useState<number | null>(null);
+  const [chapterCompletion, setChapterCompletion] = useState<Record<string, boolean>>({});
   const mainRef = useRef<HTMLDivElement>(null);
+
+  // 讀取 localStorage 中的考核完成狀態
+  useEffect(() => {
+    const loadCompletion = () => {
+      const stored = localStorage.getItem("haochuang-quiz-progress");
+      if (stored) {
+        const progress = JSON.parse(stored);
+        const completion: Record<string, boolean> = {};
+        Object.keys(progress).forEach(key => {
+          if (progress[key]?.passed) completion[key] = true;
+        });
+        setChapterCompletion(completion);
+      }
+    };
+    loadCompletion();
+    // 監聽 storage 變化（同頁面內用 custom event）
+    const handleStorageChange = () => loadCompletion();
+    window.addEventListener("quiz-progress-updated", handleStorageChange);
+    window.addEventListener("storage", handleStorageChange);
+    return () => {
+      window.removeEventListener("quiz-progress-updated", handleStorageChange);
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, []);
 
   const [showScrollTop, setShowScrollTop] = useState(false);
   const scrollLockRef = useRef(false);
@@ -72,6 +97,7 @@ export default function Home() {
         isOpen={sidebarOpen} 
         onClose={() => setSidebarOpen(false)}
         activeChapter={activeChapter}
+        chapterCompletion={chapterCompletion}
         onChapterSelect={(idx) => {
           setActiveChapter(idx);
           setUserSelectedChapter(idx);

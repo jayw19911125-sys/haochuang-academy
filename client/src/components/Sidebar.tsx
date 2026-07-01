@@ -2,7 +2,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Layers, Target, Rocket, Film, Zap, Brain, 
   BarChart3, Users, X, ExternalLink, Trophy, BookMarked, Sun, Moon,
-  FileText, Shield, FileSignature, Medal, Sparkles
+  FileText, Shield, FileSignature, Medal, Sparkles, CheckCircle2, Circle
 } from "lucide-react";
 import { chapters } from "@/lib/data";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -18,6 +18,7 @@ interface SidebarProps {
   onChapterSelect: (idx: number) => void;
   onShowDocs?: () => void;
   progress: number;
+  chapterCompletion?: Record<string, boolean>;
 }
 
 function ThemeToggle() {
@@ -48,7 +49,7 @@ function ThemeToggle() {
   );
 }
 
-export default function Sidebar({ isOpen, onClose, activeChapter, onChapterSelect, onShowDocs, progress }: SidebarProps) {
+export default function Sidebar({ isOpen, onClose, activeChapter, onChapterSelect, onShowDocs, progress, chapterCompletion = {} }: SidebarProps) {
   return (
     <>
       {/* Mobile Overlay */}
@@ -105,6 +106,7 @@ export default function Sidebar({ isOpen, onClose, activeChapter, onChapterSelec
             {chapters.map((chapter, idx) => {
               const Icon = iconMap[chapter.icon] || Layers;
               const isActive = idx === activeChapter;
+              const isCompleted = chapterCompletion[chapter.id] === true;
               
               return (
                 <li key={chapter.id}>
@@ -116,7 +118,9 @@ export default function Sidebar({ isOpen, onClose, activeChapter, onChapterSelec
                       group relative overflow-hidden
                       ${isActive 
                         ? "bg-[#F37021]/10 border border-[#F37021]/30" 
-                        : "hover:bg-sidebar-accent border border-transparent"
+                        : isCompleted
+                          ? "bg-emerald-500/5 border border-emerald-500/20 hover:bg-emerald-500/10"
+                          : "hover:bg-sidebar-accent border border-transparent"
                       }
                     `}
                   >
@@ -128,16 +132,23 @@ export default function Sidebar({ isOpen, onClose, activeChapter, onChapterSelec
                       />
                     )}
                     <div className="flex items-center gap-2.5">
-                      <Icon 
-                        size={16} 
-                        className={`transition-colors ${isActive ? "text-[#F37021]" : "text-muted-foreground group-hover:text-foreground"}`} 
-                      />
+                      {isCompleted ? (
+                        <CheckCircle2 
+                          size={16} 
+                          className="text-emerald-500 shrink-0" 
+                        />
+                      ) : (
+                        <Icon 
+                          size={16} 
+                          className={`transition-colors shrink-0 ${isActive ? "text-[#F37021]" : "text-muted-foreground group-hover:text-foreground"}`} 
+                        />
+                      )}
                       <div className="flex-1 min-w-0">
-                        <p className={`text-xs font-medium truncate transition-colors ${isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"}`}>
+                        <p className={`text-xs font-medium truncate transition-colors ${isCompleted ? "text-emerald-400" : isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground"}`}>
                           {chapter.title.replace(/^[壹貳參肆伍陸柒捌玖拾]、/, "")}
                         </p>
                         <p className="text-[10px] text-muted-foreground/70 truncate mt-0.5">
-                          {chapter.audience}
+                          {isCompleted ? "✓ 已通過考核" : chapter.audience}
                         </p>
                       </div>
                     </div>
