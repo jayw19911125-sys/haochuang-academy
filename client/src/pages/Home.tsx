@@ -14,6 +14,7 @@ import LearningTimeTracker from "@/components/LearningTimeTracker";
 import InternalDocs from "@/components/InternalDocs";
 import Leaderboard from "@/components/Leaderboard";
 import DailyQuiz from "@/components/DailyQuiz";
+import GraduationCelebration from "@/components/GraduationCelebration";
 import { chapters } from "@/lib/data";
 
 export default function Home() {
@@ -23,6 +24,8 @@ export default function Home() {
   const [showDocs, setShowDocs] = useState(false);
   const [userSelectedChapter, setUserSelectedChapter] = useState<number | null>(null);
   const [chapterCompletion, setChapterCompletion] = useState<Record<string, boolean>>({});
+  const [showGraduation, setShowGraduation] = useState(false);
+  const prevCompletionCountRef = useRef(0);
   const mainRef = useRef<HTMLDivElement>(null);
 
   // 讀取 localStorage 中的考核完成狀態
@@ -40,7 +43,9 @@ export default function Home() {
     };
     loadCompletion();
     // 監聽 storage 變化（同頁面內用 custom event）
-    const handleStorageChange = () => loadCompletion();
+    const handleStorageChange = () => {
+      loadCompletion();
+    };
     window.addEventListener("quiz-progress-updated", handleStorageChange);
     window.addEventListener("storage", handleStorageChange);
     return () => {
@@ -48,6 +53,22 @@ export default function Home() {
       window.removeEventListener("storage", handleStorageChange);
     };
   }, []);
+
+  // 監控進度是否達到 100%，觸發慶祝動畫
+  useEffect(() => {
+    const completedCount = Object.values(chapterCompletion).filter(Boolean).length;
+    const totalChapters = 14;
+    // 只有從非 100% 變到 100% 才觸發（避免每次刷新都彈出）
+    if (completedCount === totalChapters && prevCompletionCountRef.current < totalChapters) {
+      // 檢查是否已經慶祝過
+      const celebrated = localStorage.getItem("haochuang-graduation-celebrated");
+      if (!celebrated) {
+        setTimeout(() => setShowGraduation(true), 500);
+        localStorage.setItem("haochuang-graduation-celebrated", "true");
+      }
+    }
+    prevCompletionCountRef.current = completedCount;
+  }, [chapterCompletion]);
 
   const [showScrollTop, setShowScrollTop] = useState(false);
   const scrollLockRef = useRef(false);
@@ -265,6 +286,12 @@ export default function Home() {
           <ChevronUp size={20} />
         </button>
       )}
+
+      {/* 全螢幕慶祝動畫 - 進度 100% 時觸發 */}
+      <GraduationCelebration 
+        show={showGraduation} 
+        onClose={() => setShowGraduation(false)} 
+      />
     </div>
   );
 }

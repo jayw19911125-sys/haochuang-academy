@@ -1,8 +1,9 @@
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Layers, Target, Rocket, Film, Zap, Brain, 
   BarChart3, Users, X, ExternalLink, Trophy, BookMarked, Sun, Moon,
-  FileText, Shield, FileSignature, Medal, Sparkles, CheckCircle2, Circle
+  FileText, Shield, FileSignature, Medal, Sparkles, CheckCircle2, Circle, BookOpen
 } from "lucide-react";
 import { chapters } from "@/lib/data";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -45,6 +46,57 @@ function ThemeToggle() {
           theme === "dark" ? "left-0.5 bg-blue-400" : "left-[18px] bg-amber-400"
         }`} />
       </div>
+    </button>
+  );
+}
+
+function WrongNotebookButton() {
+  const [count, setCount] = useState(0);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  useEffect(() => {
+    const updateCount = () => {
+      const stored = localStorage.getItem("haochuang-wrong-notes");
+      if (stored) {
+        const notes = JSON.parse(stored);
+        setCount(notes.length);
+      } else {
+        setCount(0);
+      }
+    };
+    updateCount();
+    window.addEventListener("wrong-notes-updated", updateCount);
+    window.addEventListener("storage", updateCount);
+    return () => {
+      window.removeEventListener("wrong-notes-updated", updateCount);
+      window.removeEventListener("storage", updateCount);
+    };
+  }, []);
+
+  if (count === 0) return null;
+
+  const scrollToQuiz = () => {
+    // 滾動到每日一題區塊（錯題本在 QuizModule 內）
+    const el = document.getElementById("daily-quiz");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  return (
+    <button
+      onClick={scrollToQuiz}
+      className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/20 hover:border-amber-500/30 transition-all duration-200 group active:scale-[0.97]"
+    >
+      <div className="flex items-center gap-2">
+        <BookOpen size={14} className="text-amber-400" />
+        <span className="text-[11px] text-amber-400/90 group-hover:text-amber-400 font-medium transition-colors">
+          我的錯題本
+        </span>
+      </div>
+      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 font-semibold">
+        {count}
+      </span>
     </button>
   );
 }
@@ -316,6 +368,8 @@ export default function Sidebar({ isOpen, onClose, activeChapter, onChapterSelec
 
         {/* Bottom Links */}
         <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-sidebar-border bg-sidebar/95 backdrop-blur-sm space-y-2">
+          {/* 我的錯題本快捷按鈕 */}
+          <WrongNotebookButton />
           {/* Theme Toggle */}
           <ThemeToggle />
           <a
