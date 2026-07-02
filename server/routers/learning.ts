@@ -2,6 +2,7 @@ import { z } from "zod";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { router, publicProcedure } from "../_core/trpc";
 import { getDb } from "../db";
+import { computeCompositeScore } from "@shared/compositeScore";
 import {
   chapterProgress,
   quizAttempts,
@@ -585,24 +586,39 @@ export const learningRouter = router({
         .from(learningTimeLogs)
         .groupBy(learningTimeLogs.deviceId);
 
+      // 每日一題統計（綜合評分第四項，與管理後台一致）
+      const dailyStats = await db
+        .select({
+          deviceId: dailyQuizRecords.deviceId,
+          totalAnswered: sql<number>`count(*)`,
+          correctCount: sql<number>`sum(case when is_correct = 1 then 1 else 0 end)`,
+        })
+        .from(dailyQuizRecords)
+        .where(eq(dailyQuizRecords.isAnswered, true))
+        .groupBy(dailyQuizRecords.deviceId);
+
       const progressMap = new Map(progressStats.map(p => [p.deviceId ?? "", p]));
       const quizMap = new Map(quizStats.map(q => [q.deviceId ?? "", q]));
       const timeMap = new Map(timeStats.map(t => [t.deviceId ?? "", t]));
+      const dailyMap = new Map(dailyStats.map(d => [d.deviceId ?? "", d]));
 
       const entries = allDeviceIds.map(deviceId => {
         const progress = progressMap.get(deviceId);
         const quiz = quizMap.get(deviceId);
         const time = timeMap.get(deviceId);
+        const daily = dailyMap.get(deviceId);
         const chaptersCompleted = progress?.chaptersCompleted ?? 0;
         const avgScore = quiz?.avgScore ?? 0;
         const totalSeconds = time?.totalSeconds ?? 0;
 
-        // 綜合評分（與管理後台一致）
-        const compositeScore = Math.round(
-          (chaptersCompleted / 14) * 40 +
-          (avgScore / 100) * 30 +
-          Math.min(totalSeconds / 3600, 10) * 2
-        );
+        // 綜合評分（與管理後台一致，共用 shared/compositeScore）
+        const compositeScore = computeCompositeScore({
+          chaptersCompleted,
+          avgQuizScore: avgScore,
+          totalLearningSeconds: totalSeconds,
+          dailyQuizCorrect: daily?.correctCount ?? 0,
+          dailyQuizAnswered: daily?.totalAnswered ?? 0,
+        });
 
         return {
           deviceId,

@@ -22,7 +22,7 @@
 ## 待辦事項
 
 - [ ] 在 data.ts 各章節加入實際 YouTube videoId（需子權提供影片連結）
-- [x] 設定 ADMIN_PASSWORD 環境變數（已設定為 @asdf0308）
+- [x] 設定 ADMIN_PASSWORD 環境變數（值僅存於環境變數，勿寫入文件）
 - [x] LearningTimeTracker 前後端整合（雙軌並行：localStorage + tRPC 同步）
 - [x] Leaderboard 改用後端真實資料（雙軌：有後端資料時自動切換即時資料）
 - [x] 強化 LearningTimeTracker 後端同步：加入 visibilitychange flush，避免切換標籤頁時遷失記錄

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Send, MessageCircle, Calendar, CheckCircle2, XCircle, RotateCcw, Sparkles, Clock, ChevronDown, ChevronUp, History, Eye, EyeOff, Filter } from "lucide-react";
+import { Calendar, CheckCircle2, XCircle, RotateCcw, Sparkles, ChevronDown, ChevronUp, History, Eye, EyeOff, Filter } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useDeviceId } from "@/hooks/useDeviceId";
 
@@ -100,7 +100,6 @@ const DAILY_QUIZ_POOL: DailyQuestion[] = [
 ];
 
 const STORAGE_KEY = "haochuang-daily-quiz";
-const SLACK_CHANNEL_ID = "C0ATK171BU5"; // #all-共同成長
 
 interface HistoryEntry {
   date: string;
@@ -114,7 +113,6 @@ interface DailyQuizState {
   todayQuestionId: string;
   answered: boolean;
   selectedIndex: number | null;
-  sentToSlack: boolean;
   history: HistoryEntry[];
 }
 
@@ -149,7 +147,6 @@ function getDailyQuizState(): DailyQuizState {
         todayQuestionId: todayQuestion.id,
         answered: false,
         selectedIndex: null,
-        sentToSlack: false,
         history: state.history || [],
       };
     }
@@ -163,7 +160,6 @@ function getDailyQuizState(): DailyQuizState {
     todayQuestionId: todayQuestion.id,
     answered: false,
     selectedIndex: null,
-    sentToSlack: false,
     history: [],
   };
 }
@@ -193,16 +189,10 @@ function getPastDays(count: number): string[] {
   return days;
 }
 
-interface DailyQuizProps {
-  onSendToSlack?: (message: string) => void;
-}
-
-export default function DailyQuiz({ onSendToSlack }: DailyQuizProps) {
+export default function DailyQuiz() {
   const deviceId = useDeviceId();
   const submitDailyMutation = trpc.learning.submitDailyQuiz.useMutation();
   const [state, setState] = useState<DailyQuizState>(getDailyQuizState());
-  const [sending, setSending] = useState(false);
-  const [sendSuccess, setSendSuccess] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
   const [historyFilter, setHistoryFilter] = useState<FilterType>("all");
@@ -233,30 +223,6 @@ export default function DailyQuiz({ onSendToSlack }: DailyQuizProps) {
         correctAnswer: todayQuestion.correctIndex,
         isCorrect,
       });
-    }
-  };
-
-  const handleSendToSlack = async () => {
-    setSending(true);
-    try {
-      const difficultyEmoji = todayQuestion.difficulty === "基礎" ? "🟢" : todayQuestion.difficulty === "進階" ? "🟡" : "🔴";
-      const message = `📝 *好創學院｜每日一題* (${getTodayKey()})\n\n${difficultyEmoji} 難度：${todayQuestion.difficulty}｜章節：${todayQuestion.chapterTitle}\n\n> ${todayQuestion.question}\n\nA. ${todayQuestion.options[0]}\nB. ${todayQuestion.options[1]}\nC. ${todayQuestion.options[2]}\nD. ${todayQuestion.options[3]}\n\n_💡 答案稍後公佈，先想想再看！_\n\n||答案：${"ABCD"[todayQuestion.correctIndex]}. ${todayQuestion.options[todayQuestion.correctIndex]}\n\n📖 解析：${todayQuestion.explanation}||`;
-      
-      if (onSendToSlack) {
-        onSendToSlack(message);
-        const newState = { ...state, sentToSlack: true };
-        setState(newState);
-        saveDailyQuizState(newState);
-        setSendSuccess(true);
-        setTimeout(() => setSendSuccess(false), 3000);
-      } else {
-        // 無回調時提示用戶功能尚未連接
-        alert("Slack 推播功能需要管理員配置。請聯繫子權開啟此功能。");
-      }
-    } catch (err) {
-      console.error("Failed to send to Slack:", err);
-    } finally {
-      setSending(false);
     }
   };
 
@@ -417,50 +383,6 @@ export default function DailyQuiz({ onSendToSlack }: DailyQuizProps) {
           </div>
         )}
 
-        {/* Slack Send Button */}
-        <div className="mt-5 pt-4 border-t border-border/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <MessageCircle size={14} className="text-muted-foreground" />
-              <span className="text-[10px] text-muted-foreground">
-                推播到 Slack #all-共同成長
-              </span>
-            </div>
-            <button
-              onClick={handleSendToSlack}
-              disabled={sending || state.sentToSlack}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-medium transition-all duration-200 ${
-                state.sentToSlack
-                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                  : sendSuccess
-                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                  : "bg-violet-500/10 text-violet-400 border border-violet-500/30 hover:bg-violet-500/20"
-              } disabled:opacity-50`}
-            >
-              {state.sentToSlack ? (
-                <>
-                  <CheckCircle2 size={11} />
-                  已推播
-                </>
-              ) : sending ? (
-                <>
-                  <Clock size={11} className="animate-spin" />
-                  發送中...
-                </>
-              ) : (
-                <>
-                  <Send size={11} />
-                  推播今日題目
-                </>
-              )}
-            </button>
-          </div>
-          {state.sentToSlack && (
-            <p className="text-[9px] text-emerald-400/70 mt-2 pl-6">
-              今日題目已推播至 Slack，團隊成員可在頻道中看到並討論
-            </p>
-          )}
-        </div>
       </div>
 
       {/* History Section */}

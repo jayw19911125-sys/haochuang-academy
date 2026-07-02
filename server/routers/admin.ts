@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { eq, and, desc, sql, gte, lte, count } from "drizzle-orm";
+import { eq, and, or, desc, sql, gte, lte, count, gt, isNull, inArray } from "drizzle-orm";
 import { router, publicProcedure } from "../_core/trpc";
 import { getDb } from "../db";
+import { computeCompositeScore } from "@shared/compositeScore";
 import {
   chapterProgress,
   quizAttempts,
@@ -13,15 +14,24 @@ import {
 } from "../../drizzle/schema";
 
 // 管理員密碼（簡易保護，後續可改為 OAuth）
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "haochuang2024";
+// 必須透過環境變數設定；未設定時一律拒絕管理員存取，不使用預設密碼
+function verifyAdminToken(token: string): boolean {
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminPassword) {
+    throw new Error(
+      "ADMIN_PASSWORD environment variable is not set; admin access denied",
+    );
+  }
+  return token === adminPassword;
+}
 
 export const adminRouter = router({
   // ─── 管理員驗證 ──────────────────────────────────────
-  
+
   verifyAdmin: publicProcedure
     .input(z.object({ password: z.string() }))
     .mutation(async ({ input }) => {
-      const isValid = input.password === ADMIN_PASSWORD;
+      const isValid = verifyAdminToken(input.password);
       return { success: isValid };
     }),
 
@@ -31,7 +41,7 @@ export const adminRouter = router({
   getAllLearnersOverview: publicProcedure
     .input(z.object({ adminToken: z.string() }))
     .query(async ({ input }) => {
-      if (input.adminToken !== ADMIN_PASSWORD) {
+      if (!verifyAdminToken(input.adminToken)) {
         return { error: "Unauthorized", data: [] };
       }
       
@@ -97,13 +107,14 @@ export const adminRouter = router({
         const dailyCorrect = daily?.correctCount ?? 0;
         const dailyTotal = daily?.totalAnswered ?? 0;
         
-        // 綜合評分（與排行榜一致）
-        const compositeScore = Math.round(
-          (chaptersCompleted / 14) * 40 +
-          (avgScore / 100) * 30 +
-          Math.min(totalSeconds / 3600, 10) * 2 +
-          (dailyTotal > 0 ? (dailyCorrect / dailyTotal) * 100 : 0) * 0.1
-        );
+        // 綜合評分（與排行榜一致，共用 shared/compositeScore）
+        const compositeScore = computeCompositeScore({
+          chaptersCompleted,
+          avgQuizScore: avgScore,
+          totalLearningSeconds: totalSeconds,
+          dailyQuizCorrect: dailyCorrect,
+          dailyQuizAnswered: dailyTotal,
+        });
 
         return {
           rank: index + 1,
@@ -136,7 +147,7 @@ export const adminRouter = router({
   getChapterCompletionStats: publicProcedure
     .input(z.object({ adminToken: z.string() }))
     .query(async ({ input }) => {
-      if (input.adminToken !== ADMIN_PASSWORD) return [];
+      if (!verifyAdminToken(input.adminToken)) return [];
       
       const db = await getDb();
       if (!db) return [];
@@ -169,7 +180,7 @@ export const adminRouter = router({
   getHardQuestions: publicProcedure
     .input(z.object({ adminToken: z.string() }))
     .query(async ({ input }) => {
-      if (input.adminToken !== ADMIN_PASSWORD) return [];
+      if (!verifyAdminToken(input.adminToken)) return [];
       
       const db = await getDb();
       if (!db) return [];
@@ -199,7 +210,7 @@ export const adminRouter = router({
       days: z.number().min(7).max(90).default(30),
     }))
     .query(async ({ input }) => {
-      if (input.adminToken !== ADMIN_PASSWORD) return [];
+      if (!verifyAdminToken(input.adminToken)) return [];
       
       const db = await getDb();
       if (!db) return [];
@@ -227,7 +238,7 @@ export const adminRouter = router({
       days: z.number().min(7).max(90).default(30),
     }))
     .query(async ({ input }) => {
-      if (input.adminToken !== ADMIN_PASSWORD) return [];
+      if (!verifyAdminToken(input.adminToken)) return [];
       
       const db = await getDb();
       if (!db) return [];
@@ -259,7 +270,7 @@ export const adminRouter = router({
   getAnnouncements: publicProcedure
     .input(z.object({ adminToken: z.string() }))
     .query(async ({ input }) => {
-      if (input.adminToken !== ADMIN_PASSWORD) return [];
+      if (!verifyAdminToken(input.adminToken)) return [];
       
       const db = await getDb();
       if (!db) return [];
@@ -283,7 +294,7 @@ export const adminRouter = router({
       expiresAt: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
-      if (input.adminToken !== ADMIN_PASSWORD) return { success: false };
+      if (!verifyAdminToken(input.adminToken)) return { success: false };
       
       const db = await getDb();
       if (!db) return { success: false };
@@ -309,7 +320,7 @@ export const adminRouter = router({
       isActive: z.boolean(),
     }))
     .mutation(async ({ input }) => {
-      if (input.adminToken !== ADMIN_PASSWORD) return { success: false };
+      if (!verifyAdminToken(input.adminToken)) return { success: false };
       
       const db = await getDb();
       if (!db) return { success: false };
@@ -329,12 +340,18 @@ export const adminRouter = router({
       const db = await getDb();
       if (!db) return [];
 
+      const now = new Date();
+
       return db
         .select()
         .from(announcements)
         .where(and(
           eq(announcements.isActive, true),
-          eq(announcements.targetRole, "all"),
+          inArray(announcements.targetRole, ["all", "user"]),
+          or(
+            isNull(announcements.expiresAt),
+            gt(announcements.expiresAt, now),
+          ),
         ))
         .orderBy(desc(announcements.isPinned), desc(announcements.createdAt))
         .limit(5);
@@ -346,7 +363,7 @@ export const adminRouter = router({
   exportLearnersCsv: publicProcedure
     .input(z.object({ adminToken: z.string() }))
     .query(async ({ input }) => {
-      if (input.adminToken !== ADMIN_PASSWORD) {
+      if (!verifyAdminToken(input.adminToken)) {
         return { error: "Unauthorized", csv: "" };
       }
 
@@ -431,12 +448,13 @@ export const adminRouter = router({
         const dailyCorrect = d?.correctCount ?? 0;
         const dailyTotal = d?.totalAnswered ?? 0;
 
-        const compositeScore = Math.round(
-          (chaptersCompleted / 14) * 40 +
-          (avgScore / 100) * 30 +
-          Math.min(totalSeconds / 3600, 10) * 2 +
-          (dailyTotal > 0 ? (dailyCorrect / dailyTotal) * 100 : 0) * 0.1
-        );
+        const compositeScore = computeCompositeScore({
+          chaptersCompleted,
+          avgQuizScore: avgScore,
+          totalLearningSeconds: totalSeconds,
+          dailyQuizCorrect: dailyCorrect,
+          dailyQuizAnswered: dailyTotal,
+        });
 
         const lastActivity = p?.lastActivity
           ? new Date(p.lastActivity).toLocaleDateString("zh-TW")
