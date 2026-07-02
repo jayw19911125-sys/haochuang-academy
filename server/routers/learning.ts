@@ -11,6 +11,7 @@ import {
   badgeDefinitions,
   dailyQuizRecords,
   learningTimeLogs,
+  milestoneProgress,
   users,
 } from "../../drizzle/schema";
 
@@ -450,6 +451,86 @@ export const learningRouter = router({
         avgQuizScore: Math.round(quizStats[0]?.avgScore ?? 0),
         totalQuizAttempts: quizStats[0]?.totalAttempts ?? 0,
       };
+    }),
+
+  // ─── 里程碑進度 ───────────────────────────────────────
+
+  // 取得用戶里程碑進度
+  getMilestoneProgress: publicProcedure
+    .input(z.object({ deviceId: z.string() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      const records = await db
+        .select()
+        .from(milestoneProgress)
+        .where(eq(milestoneProgress.deviceId, input.deviceId));
+
+      return records;
+    }),
+
+  // 更新單一里程碑勾選狀態
+  toggleMilestone: publicProcedure
+    .input(z.object({
+      deviceId: z.string(),
+      milestoneId: z.string(),
+      weekNumber: z.number().min(1).max(4),
+      isChecked: z.boolean(),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { success: false };
+
+      await db.insert(milestoneProgress).values({
+        deviceId: input.deviceId,
+        milestoneId: input.milestoneId,
+        weekNumber: input.weekNumber,
+        isChecked: input.isChecked,
+        checkedAt: input.isChecked ? new Date() : null,
+      }).onDuplicateKeyUpdate({
+        set: {
+          isChecked: input.isChecked,
+          checkedAt: input.isChecked ? new Date() : null,
+        }
+      });
+
+      return { success: true };
+    }),
+
+  // 批次同步里程碑進度（初始化時用）
+  syncMilestones: publicProcedure
+    .input(z.object({
+      deviceId: z.string(),
+      milestones: z.array(z.object({
+        milestoneId: z.string(),
+        weekNumber: z.number().min(1).max(4),
+        isChecked: z.boolean(),
+      })),
+    }))
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return { success: false, synced: 0 };
+
+      if (input.milestones.length === 0) return { success: true, synced: 0 };
+
+      // 批次 upsert
+      for (const m of input.milestones) {
+        await db.insert(milestoneProgress).values({
+          deviceId: input.deviceId,
+          milestoneId: m.milestoneId,
+          weekNumber: m.weekNumber,
+          isChecked: m.isChecked,
+          checkedAt: m.isChecked ? new Date() : null,
+        }).onDuplicateKeyUpdate({
+          set: {
+            isChecked: m.isChecked,
+            checkedAt: m.isChecked ? new Date() : null,
+          }
+        });
+      }
+
+      return { success: true, synced: input.milestones.length };
     }),
 
   // 公開排行榜（前台用，不需要管理員權限）

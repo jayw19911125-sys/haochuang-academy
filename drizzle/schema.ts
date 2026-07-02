@@ -337,3 +337,30 @@ export const leaderboardSnapshots = mysqlTable(
 
 export type LeaderboardSnapshot = typeof leaderboardSnapshots.$inferSelect;
 export type InsertLeaderboardSnapshot = typeof leaderboardSnapshots.$inferInsert;
+
+// ─────────────────────────────────────────────
+// 12. 新人 30 天里程碑進度表
+// ─────────────────────────────────────────────
+export const milestoneProgress = mysqlTable(
+  "milestone_progress",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId"),
+    deviceId: varchar("deviceId", { length: 128 }).notNull(),
+    milestoneId: varchar("milestoneId", { length: 50 }).notNull(), // e.g. "w1_1", "w2_3"
+    weekNumber: int("weekNumber").notNull(),   // 1~4
+    isChecked: boolean("isChecked").default(false).notNull(),
+    checkedAt: timestamp("checkedAt"),
+    selfRating: int("selfRating"),             // 1~5 自評分（選項）
+    note: text("note"),                       // 備註（選項）
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => ({
+    deviceMilestoneIdx: uniqueIndex("mp_device_milestone").on(table.deviceId, table.milestoneId),
+    deviceIdx: index("mp_device_idx").on(table.deviceId),
+  })
+);
+
+export type MilestoneProgress = typeof milestoneProgress.$inferSelect;
+export type InsertMilestoneProgress = typeof milestoneProgress.$inferInsert;

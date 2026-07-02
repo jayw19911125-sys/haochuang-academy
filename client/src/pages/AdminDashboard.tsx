@@ -4,7 +4,7 @@ import {
   Users, BookOpen, Trophy, TrendingUp, AlertCircle, 
   CheckCircle2, Clock, Target, BarChart3, Bell, 
   Plus, Trash2, Pin, Eye, EyeOff, LogOut, Lock,
-  ChevronDown, ChevronUp, RefreshCw
+  ChevronDown, ChevronUp, RefreshCw, Download
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -120,6 +120,45 @@ function LearnersTable({ adminToken }: { adminToken: string }) {
   const { data, isLoading, refetch } = trpc.admin.getAllLearnersOverview.useQuery({ adminToken });
   const [sortBy, setSortBy] = useState<"compositeScore" | "chaptersCompleted" | "totalLearningHours">("compositeScore");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const exportCsvQuery = trpc.admin.exportLearnersCsv.useQuery(
+    { adminToken },
+    { enabled: false } // 手動觸發
+  );
+
+  const handleExportCsv = async () => {
+    setIsExporting(true);
+    try {
+      const result = await exportCsvQuery.refetch();
+      if (result.data?.error === "Unauthorized") {
+        alert("權限不足，請重新登入");
+        return;
+      }
+      if (result.data?.error) {
+        alert(`匯出失敗：${result.data.error}`);
+        return;
+      }
+      const csvContent = result.data?.csv ?? "";
+      // 空資料時仍輸出標頭 CSV
+      const finalCsv = csvContent === "無資料" || csvContent === ""
+        ? "裝置 ID,綜合評分,章節完成數,章節閱讀數,進度%,測驗平均分,測驗通過數,測驗嘗試次數,學習總時間(小時),每日一題已作答,每日一題正確率%,最後活躍時間"
+        : csvContent;
+      const blob = new Blob(["\uFEFF" + finalCsv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `好創學員學習記錄_${new Date().toLocaleDateString("zh-TW").replace(/\//g, "-")}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(`匯出發生錯誤，請重試：${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const learners = useMemo(() => {
     if (!data?.data) return [];
@@ -175,9 +214,19 @@ function LearnersTable({ adminToken }: { adminToken: string }) {
             {opt.label}
           </button>
         ))}
-        <button onClick={() => refetch()} className="ml-auto text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
-          <RefreshCw size={12} /> 刷新
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={handleExportCsv}
+            disabled={isExporting}
+            className="text-xs text-emerald-400 hover:text-emerald-300 flex items-center gap-1 transition-colors disabled:opacity-50"
+          >
+            {isExporting ? <RefreshCw size={12} className="animate-spin" /> : <Download size={12} />}
+            {isExporting ? "匯出中..." : "匯出 CSV"}
+          </button>
+          <button onClick={() => refetch()} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+            <RefreshCw size={12} /> 刷新
+          </button>
+        </div>
       </div>
 
       {/* 學員列表 */}

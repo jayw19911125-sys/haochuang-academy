@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, Trophy, Clock, Target, Zap, Star, ChevronDown } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { useDeviceId } from "@/hooks/useDeviceId";
 
 interface MilestoneTask {
   id: string;
@@ -83,16 +85,53 @@ const categoryColors: Record<string, { bg: string; text: string; icon: React.Rea
 };
 
 export default function MilestoneTracker() {
+  const deviceId = useDeviceId();
   const [completedTasks, setCompletedTasks] = useState<Record<string, boolean>>({});
   const [expandedWeek, setExpandedWeek] = useState<number>(1);
+  const [backendLoaded, setBackendLoaded] = useState(false);
 
-  // Load from localStorage
+  // 後端讀取
+  const { data: backendProgress } = trpc.learning.getMilestoneProgress.useQuery(
+    { deviceId: deviceId ?? "" },
+    { enabled: !!deviceId, staleTime: 30_000 }
+  );
+
+  const toggleMutation = trpc.learning.toggleMilestone.useMutation();
+  const syncMutation = trpc.learning.syncMilestones.useMutation();
+
+  // 初始化：後端資料優先，否則用 localStorage
   useEffect(() => {
-    const saved = localStorage.getItem("haochuang-milestone-progress");
-    if (saved) {
-      try { setCompletedTasks(JSON.parse(saved)); } catch {}
+    if (!deviceId) return;
+
+    if (backendProgress && backendProgress.length > 0 && !backendLoaded) {
+      // 後端有資料：以後端為主
+      const merged: Record<string, boolean> = {};
+      backendProgress.forEach(r => { merged[r.milestoneId] = r.isChecked; });
+      setCompletedTasks(merged);
+      localStorage.setItem("haochuang-milestone-progress", JSON.stringify(merged));
+      setBackendLoaded(true);
+    } else if (!backendLoaded) {
+      // 後端無資料：從 localStorage 讀取，並同步到後端
+      const saved = localStorage.getItem("haochuang-milestone-progress");
+      if (saved) {
+        try {
+          const parsed: Record<string, boolean> = JSON.parse(saved);
+          setCompletedTasks(parsed);
+          // 將 localStorage 資料同步到後端
+          const milestones = milestoneData.flatMap(w =>
+            w.tasks.map(t => ({
+              milestoneId: t.id,
+              weekNumber: w.week,
+              isChecked: parsed[t.id] ?? false,
+            }))
+          );
+          syncMutation.mutate({ deviceId, milestones });
+        } catch {}
+      }
+      setBackendLoaded(true);
     }
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backendProgress, deviceId]);
 
   // Save to localStorage
   useEffect(() => {
@@ -100,7 +139,18 @@ export default function MilestoneTracker() {
   }, [completedTasks]);
 
   const toggleTask = (taskId: string) => {
-    setCompletedTasks(prev => ({ ...prev, [taskId]: !prev[taskId] }));
+    const newValue = !completedTasks[taskId];
+    setCompletedTasks(prev => ({ ...prev, [taskId]: newValue }));
+    // 同步到後端
+    if (deviceId) {
+      const weekNumber = milestoneData.find(w => w.tasks.some(t => t.id === taskId))?.week ?? 1;
+      toggleMutation.mutate({
+        deviceId,
+        milestoneId: taskId,
+        weekNumber,
+        isChecked: newValue,
+      });
+    }
   };
 
   const getWeekProgress = (week: MilestoneWeek) => {

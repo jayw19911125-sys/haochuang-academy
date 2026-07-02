@@ -339,4 +339,133 @@ export const adminRouter = router({
         .orderBy(desc(announcements.isPinned), desc(announcements.createdAt))
         .limit(5);
     }),
+
+  // ─── CSV 匯出 ────────────────────────────────────────
+
+  // 匯出學員完整學習記錄為 CSV
+  exportLearnersCsv: publicProcedure
+    .input(z.object({ adminToken: z.string() }))
+    .query(async ({ input }) => {
+      if (input.adminToken !== ADMIN_PASSWORD) {
+        return { error: "Unauthorized", csv: "" };
+      }
+
+      const db = await getDb();
+      if (!db) return { error: "DB unavailable", csv: "" };
+
+      // 從四個表各自取得所有活躍 device
+      const [progressDevices, quizDevices, timeDevices, dailyDevices] = await Promise.all([
+        db.select({ deviceId: chapterProgress.deviceId }).from(chapterProgress).groupBy(chapterProgress.deviceId),
+        db.select({ deviceId: quizAttempts.deviceId }).from(quizAttempts).groupBy(quizAttempts.deviceId),
+        db.select({ deviceId: learningTimeLogs.deviceId }).from(learningTimeLogs).groupBy(learningTimeLogs.deviceId),
+        db.select({ deviceId: dailyQuizRecords.deviceId }).from(dailyQuizRecords).groupBy(dailyQuizRecords.deviceId),
+      ]);
+
+      const allDeviceIds = Array.from(new Set([
+        ...progressDevices.map(d => d.deviceId ?? ""),
+        ...quizDevices.map(d => d.deviceId ?? ""),
+        ...timeDevices.map(d => d.deviceId ?? ""),
+        ...dailyDevices.map(d => d.deviceId ?? ""),
+      ].filter(Boolean)));
+
+      if (allDeviceIds.length === 0) return { error: null, csv: "\u7121資料" };
+
+      // 各表統計
+      const [progressStats, quizStats, timeStats, dailyStats] = await Promise.all([
+        db.select({
+          deviceId: chapterProgress.deviceId,
+          chaptersCompleted: sql<number>`sum(case when quiz_passed = 1 then 1 else 0 end)`,
+          chaptersRead: sql<number>`sum(case when is_read = 1 then 1 else 0 end)`,
+          lastActivity: sql<Date>`max(updated_at)`,
+        }).from(chapterProgress).groupBy(chapterProgress.deviceId),
+
+        db.select({
+          deviceId: quizAttempts.deviceId,
+          totalAttempts: sql<number>`count(*)`,
+          avgScore: sql<number>`avg(score)`,
+          passedCount: sql<number>`sum(case when passed = 1 then 1 else 0 end)`,
+        }).from(quizAttempts).groupBy(quizAttempts.deviceId),
+
+        db.select({
+          deviceId: learningTimeLogs.deviceId,
+          totalSeconds: sql<number>`sum(total_seconds)`,
+        }).from(learningTimeLogs).groupBy(learningTimeLogs.deviceId),
+
+        db.select({
+          deviceId: dailyQuizRecords.deviceId,
+          totalAnswered: sql<number>`count(*)`,
+          correctCount: sql<number>`sum(case when is_correct = 1 then 1 else 0 end)`,
+        }).from(dailyQuizRecords).where(eq(dailyQuizRecords.isAnswered, true)).groupBy(dailyQuizRecords.deviceId),
+      ]);
+
+      const progressMap = new Map(progressStats.map(p => [p.deviceId ?? "", p]));
+      const quizMap = new Map(quizStats.map(q => [q.deviceId ?? "", q]));
+      const timeMap = new Map(timeStats.map(t => [t.deviceId ?? "", t]));
+      const dailyMap = new Map(dailyStats.map(d => [d.deviceId ?? "", d]));
+
+      // 建立 CSV
+      const headers = [
+        "裝置 ID",
+        "綜合評分",
+        "章節完成數",
+        "章節閱讀數",
+        "進度%",
+        "測驗平均分",
+        "測驗通過數",
+        "測驗嘗試次數",
+        "學習總時間(小時)",
+        "每日一題已作答",
+        "每日一題正確率%",
+        "最後活躍時間",
+      ];
+
+      const rows = allDeviceIds.map(deviceId => {
+        const p = progressMap.get(deviceId);
+        const q = quizMap.get(deviceId);
+        const t = timeMap.get(deviceId);
+        const d = dailyMap.get(deviceId);
+
+        const chaptersCompleted = p?.chaptersCompleted ?? 0;
+        const avgScore = q?.avgScore ?? 0;
+        const totalSeconds = t?.totalSeconds ?? 0;
+        const dailyCorrect = d?.correctCount ?? 0;
+        const dailyTotal = d?.totalAnswered ?? 0;
+
+        const compositeScore = Math.round(
+          (chaptersCompleted / 14) * 40 +
+          (avgScore / 100) * 30 +
+          Math.min(totalSeconds / 3600, 10) * 2 +
+          (dailyTotal > 0 ? (dailyCorrect / dailyTotal) * 100 : 0) * 0.1
+        );
+
+        const lastActivity = p?.lastActivity
+          ? new Date(p.lastActivity).toLocaleDateString("zh-TW")
+          : "-";
+
+        return [
+          deviceId,
+          compositeScore,
+          chaptersCompleted,
+          p?.chaptersRead ?? 0,
+          Math.round((chaptersCompleted / 14) * 100),
+          Math.round(avgScore),
+          q?.passedCount ?? 0,
+          q?.totalAttempts ?? 0,
+          Math.round(totalSeconds / 360) / 10,
+          dailyTotal,
+          dailyTotal > 0 ? Math.round((dailyCorrect / dailyTotal) * 100) : 0,
+          lastActivity,
+        ];
+      });
+
+      // 按綜合評分排序
+      rows.sort((a, b) => (b[1] as number) - (a[1] as number));
+
+      const csvLines = [
+        headers.join(","),
+        ...rows.map(row => row.map(v => `"${v}"`).join(",")),
+      ];
+
+      return { error: null, csv: csvLines.join("\n") };
+    }),
 });

@@ -28,3 +28,8 @@
 - [x] 強化 LearningTimeTracker 後端同步：加入 visibilitychange flush，避免切換標籤頁時遷失記錄
 - [x] 修正 getLeaderboard 聚合邏輯：合併三表所有活躍 device，避免遷漏學員
 - [ ] MilestoneTracker 前後端整合（待子權確認需求）
+
+## 新需求（2026-07-02）
+
+- [x] MilestoneTracker 後端整合：DB schema + API + 前端雙軌同步（跨裝置不遷失）
+- [x] 管理後台 CSV 匯出：所有學員進度 + 測驗成績下載為 CSV
