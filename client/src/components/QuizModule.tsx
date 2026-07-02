@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { trpc } from "@/lib/trpc";
+import { useDeviceId } from "@/hooks/useDeviceId";
 import { CheckCircle2, XCircle, Trophy, Lock, RotateCcw, ChevronDown, Bookmark, BookmarkCheck, BookOpen } from "lucide-react";
 
 
@@ -135,6 +137,9 @@ export interface WrongNote {
 }
 
 export default function QuizModule({ chapterId, chapterTitle, nextChapterId }: QuizModuleProps) {
+  const deviceId = useDeviceId();
+  const saveQuizMutation = trpc.learning.submitQuiz.useMutation();
+  const addWrongNoteMutation = trpc.learning.addWrongNote.useMutation();
   const [isOpen, setIsOpen] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
@@ -156,7 +161,7 @@ export default function QuizModule({ chapterId, chapterTitle, nextChapterId }: Q
     }
   }, []);
 
-  // Save wrong note to localStorage
+  // Save wrong note to localStorage + tRPC 後端同步
   const saveWrongNote = (q: QuizQuestion, userAns: number) => {
     const stored = localStorage.getItem(WRONG_NOTES_KEY);
     const notes: WrongNote[] = stored ? JSON.parse(stored) : [];
@@ -178,6 +183,19 @@ export default function QuizModule({ chapterId, chapterTitle, nextChapterId }: Q
     setWrongNotes(updated);
     setSavedWrongNotes(prev => { const next = new Set(Array.from(prev)); next.add(q.id); return next; });
     window.dispatchEvent(new Event("wrong-notes-updated"));
+    // 同步到後端
+    if (deviceId) {
+      addWrongNoteMutation.mutate({
+        deviceId,
+        chapterId,
+        questionId: q.id,
+        questionText: q.question,
+        options: q.options,
+        correctAnswer: q.correctIndex,
+        explanation: q.explanation,
+        userAnswer: userAns,
+      });
+    }
   };
 
   // Remove wrong note
@@ -210,14 +228,32 @@ export default function QuizModule({ chapterId, chapterTitle, nextChapterId }: Q
     }
   }, [chapterId]);
 
-  // Save progress to localStorage
-  const saveProgress = (didPass: boolean) => {
+  // Save progress to localStorage + tRPC 後端同步
+  const saveProgress = (didPass: boolean, finalAnswers: (number | null)[], finalCorrect: number) => {
     const stored = localStorage.getItem(STORAGE_KEY);
     const progress = stored ? JSON.parse(stored) : {};
     progress[chapterId] = { passed: didPass, timestamp: Date.now() };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
     // 通知 Sidebar 更新完成狀態
     window.dispatchEvent(new Event("quiz-progress-updated"));
+    // 同步到後端
+    if (deviceId) {
+      const answerDetails = questions.map((q, i) => ({
+        questionId: q.id,
+        selectedAnswer: finalAnswers[i] ?? -1,
+        correctAnswer: q.correctIndex,
+        isCorrect: finalAnswers[i] === q.correctIndex,
+      }));
+      saveQuizMutation.mutate({
+        deviceId,
+        chapterId,
+        score: Math.round((finalCorrect / questions.length) * 100),
+        totalQuestions: questions.length,
+        correctAnswers: finalCorrect,
+        passed: didPass,
+        answers: answerDetails,
+      });
+    }
   };
 
   const handleAnswer = (optionIndex: number) => {
@@ -243,9 +279,12 @@ export default function QuizModule({ chapterId, chapterTitle, nextChapterId }: Q
         ? correctCount + (answers[currentQuestion] === null ? 1 : 0)
         : correctCount;
       const didPass = finalCorrect >= passThreshold;
+      // 建立最終答案陣列（含最後一題）
+      const finalAnswers = [...answers];
+      finalAnswers[currentQuestion] = selectedAnswer;
       setPassed(didPass);
       setQuizCompleted(true);
-      saveProgress(didPass);
+      saveProgress(didPass, finalAnswers, finalCorrect);
     }
   };
 

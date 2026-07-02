@@ -16,8 +16,13 @@ import Leaderboard from "@/components/Leaderboard";
 import DailyQuiz from "@/components/DailyQuiz";
 import GraduationCelebration from "@/components/GraduationCelebration";
 import { chapters } from "@/lib/data";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 export default function Home() {
+  // The userAuth hooks provides authentication state
+  // To implement login/logout functionality, simply call logout() or redirect to getLoginUrl()
+  let { user, loading, error, isAuthenticated, logout } = useAuth();
+
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeChapter, setActiveChapter] = useState(0);
   const [scrollProgress, setScrollProgress] = useState(0);

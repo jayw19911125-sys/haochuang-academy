@@ -6,6 +6,8 @@ export interface ChapterContent {
   color: string;
   audience: string;
   sections: Section[];
+  videoId?: string;  // YouTube 影片 ID（可選）
+  videoTitle?: string;  // 影片標題（可選）
 }
 
 export interface Section {

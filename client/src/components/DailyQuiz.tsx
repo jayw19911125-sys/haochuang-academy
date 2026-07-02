@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Send, MessageCircle, Calendar, CheckCircle2, XCircle, RotateCcw, Sparkles, Clock, ChevronDown, ChevronUp, History, Eye, EyeOff, Filter } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { useDeviceId } from "@/hooks/useDeviceId";
 
 interface DailyQuestion {
   id: string;
@@ -196,6 +198,8 @@ interface DailyQuizProps {
 }
 
 export default function DailyQuiz({ onSendToSlack }: DailyQuizProps) {
+  const deviceId = useDeviceId();
+  const submitDailyMutation = trpc.learning.submitDailyQuiz.useMutation();
   const [state, setState] = useState<DailyQuizState>(getDailyQuizState());
   const [sending, setSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
@@ -218,6 +222,18 @@ export default function DailyQuiz({ onSendToSlack }: DailyQuizProps) {
     };
     setState(newState);
     saveDailyQuizState(newState);
+    // 同步到後端
+    if (deviceId) {
+      submitDailyMutation.mutate({
+        deviceId,
+        quizDate: state.lastDate,
+        questionId: todayQuestion.id,
+        questionText: todayQuestion.question,
+        selectedAnswer: idx,
+        correctAnswer: todayQuestion.correctIndex,
+        isCorrect,
+      });
+    }
   };
 
   const handleSendToSlack = async () => {

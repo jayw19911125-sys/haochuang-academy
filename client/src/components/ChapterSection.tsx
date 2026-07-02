@@ -66,6 +66,37 @@ export default function ChapterSection({ chapter, index, onVisible }: ChapterSec
         ))}
       </div>
 
+      {/* YouTube 教學影片 - 如果有設定則顯示 */}
+      {chapter.videoId && (
+        <div className="mt-10 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div 
+              className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm"
+              style={{ backgroundColor: chapter.color, boxShadow: `0 0 12px ${chapter.color}40` }}
+            >
+              ▶
+            </div>
+            <div>
+              <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground font-medium block">
+                教學影片
+              </span>
+              {chapter.videoTitle && (
+                <span className="text-sm font-semibold text-foreground">{chapter.videoTitle}</span>
+              )}
+            </div>
+          </div>
+          <div className="relative w-full rounded-xl overflow-hidden glass-card" style={{ paddingBottom: '56.25%' }}>
+            <iframe
+              className="absolute top-0 left-0 w-full h-full"
+              src={`https://www.youtube.com/embed/${chapter.videoId}?rel=0&modestbranding=1`}
+              title={chapter.videoTitle || `${chapter.title} 教學影片`}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        </div>
+      )}
+
       {/* AI 學習助手 - 每章底部 */}
       <AIAssistant chapterId={chapter.id} chapterTitle={chapter.title} />
 
