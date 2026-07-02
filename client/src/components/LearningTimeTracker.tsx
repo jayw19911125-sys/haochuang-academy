@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Clock, TrendingUp, BookOpen, Timer, BarChart2, Flame, Award } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { useDeviceId } from "@/hooks/useDeviceId";
 
 interface TimeRecord {
   chapterId: string;
@@ -84,11 +86,20 @@ function getStreakDays(records: TimeRecord[]): number {
 }
 
 export default function LearningTimeTracker({ currentChapterId, currentChapterTitle }: LearningTimeTrackerProps) {
+  const deviceId = useDeviceId();
+  const updateReadTimeMutation = trpc.learning.updateReadTime.useMutation();
   const [records, setRecords] = useState<TimeRecord[]>(getTimeRecords());
   const [currentSessionTime, setCurrentSessionTime] = useState(0);
   const [isExpanded, setIsExpanded] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(Date.now());
+  const deviceIdRef = useRef<string | null>(null);
+  const currentChapterIdRef = useRef<string>(currentChapterId);
+  useEffect(() => { deviceIdRef.current = deviceId; }, [deviceId]);
+  useEffect(() => { currentChapterIdRef.current = currentChapterId; }, [currentChapterId]);
+
+  // 可靠 flush 函數（共用於 cleanup / visibilitychange / beforeunload）
+  const flushTimeRef = useRef<() => void>(() => {});
 
   // Start tracking time for current chapter
   useEffect(() => {
@@ -100,11 +111,8 @@ export default function LearningTimeTracker({ currentChapterId, currentChapterTi
       setCurrentSessionTime(elapsed);
     }, 1000);
 
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-      // Save time when leaving chapter
+    const flush = () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
       const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
       if (elapsed > 3) {
         const updatedRecords = getTimeRecords();
@@ -123,10 +131,35 @@ export default function LearningTimeTracker({ currentChapterId, currentChapterTi
           });
         }
         saveTimeRecords(updatedRecords);
-        setRecords(updatedRecords);
+        setRecords([...updatedRecords]);
+        // 同步到後端
+        if (deviceIdRef.current) {
+          updateReadTimeMutation.mutate({
+            deviceId: deviceIdRef.current,
+            chapterId: currentChapterId,
+            seconds: elapsed,
+          });
+        }
+        // 重置計時器（避免重複計算）
+        startTimeRef.current = Date.now();
       }
     };
+    flushTimeRef.current = flush;
+
+    return () => { flush(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentChapterId, currentChapterTitle]);
+
+  // 頁面隱藏（切換標籤頁）時也就地儲存
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        flushTimeRef.current();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
 
   const totalLearningTime = records.reduce((sum, r) => sum + r.totalSeconds, 0) + currentSessionTime;
   const totalVisits = records.reduce((sum, r) => sum + r.visitCount, 0);

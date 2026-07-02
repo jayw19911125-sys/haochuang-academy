@@ -451,4 +451,93 @@ export const learningRouter = router({
         totalQuizAttempts: quizStats[0]?.totalAttempts ?? 0,
       };
     }),
+
+  // 公開排行榜（前台用，不需要管理員權限）
+  getLeaderboard: publicProcedure
+    .input(z.object({ limit: z.number().min(1).max(50).default(20) }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      // 從三個表各自取得所有活躍 device（避免遗漏只有測驗或時間的學員）
+      const [progressDevices, quizDevices, timeDevices] = await Promise.all([
+        db.select({ deviceId: chapterProgress.deviceId }).from(chapterProgress).groupBy(chapterProgress.deviceId),
+        db.select({ deviceId: quizAttempts.deviceId }).from(quizAttempts).groupBy(quizAttempts.deviceId),
+        db.select({ deviceId: learningTimeLogs.deviceId }).from(learningTimeLogs).groupBy(learningTimeLogs.deviceId),
+      ]);
+
+      // 合併所有 deviceId
+      const allDeviceIds = Array.from(new Set([
+        ...progressDevices.map(d => d.deviceId ?? ""),
+        ...quizDevices.map(d => d.deviceId ?? ""),
+        ...timeDevices.map(d => d.deviceId ?? ""),
+      ].filter(Boolean)));
+
+      if (allDeviceIds.length === 0) return [];
+
+      // 章節完成統計
+      const progressStats = await db
+        .select({
+          deviceId: chapterProgress.deviceId,
+          chaptersCompleted: sql<number>`sum(case when quiz_passed = 1 then 1 else 0 end)`,
+          lastActivity: sql<Date>`max(updated_at)`,
+        })
+        .from(chapterProgress)
+        .groupBy(chapterProgress.deviceId);
+
+      // 測驗統計
+      const quizStats = await db
+        .select({
+          deviceId: quizAttempts.deviceId,
+          avgScore: sql<number>`avg(score)`,
+          passedCount: sql<number>`sum(case when passed = 1 then 1 else 0 end)`,
+        })
+        .from(quizAttempts)
+        .groupBy(quizAttempts.deviceId);
+
+      // 學習時間
+      const timeStats = await db
+        .select({
+          deviceId: learningTimeLogs.deviceId,
+          totalSeconds: sql<number>`sum(total_seconds)`,
+        })
+        .from(learningTimeLogs)
+        .groupBy(learningTimeLogs.deviceId);
+
+      const progressMap = new Map(progressStats.map(p => [p.deviceId ?? "", p]));
+      const quizMap = new Map(quizStats.map(q => [q.deviceId ?? "", q]));
+      const timeMap = new Map(timeStats.map(t => [t.deviceId ?? "", t]));
+
+      const entries = allDeviceIds.map(deviceId => {
+        const progress = progressMap.get(deviceId);
+        const quiz = quizMap.get(deviceId);
+        const time = timeMap.get(deviceId);
+        const chaptersCompleted = progress?.chaptersCompleted ?? 0;
+        const avgScore = quiz?.avgScore ?? 0;
+        const totalSeconds = time?.totalSeconds ?? 0;
+
+        // 綜合評分（與管理後台一致）
+        const compositeScore = Math.round(
+          (chaptersCompleted / 14) * 40 +
+          (avgScore / 100) * 30 +
+          Math.min(totalSeconds / 3600, 10) * 2
+        );
+
+        return {
+          deviceId,
+          chaptersCompleted,
+          progressPercent: Math.round((chaptersCompleted / 14) * 100),
+          avgQuizScore: Math.round(avgScore),
+          quizPassedCount: quiz?.passedCount ?? 0,
+          totalLearningSeconds: totalSeconds,
+          compositeScore,
+          lastActivity: progress?.lastActivity ?? null,
+        };
+      });
+
+      // 按綜合評分排序
+      entries.sort((a, b) => b.compositeScore - a.compositeScore);
+
+      return entries.slice(0, input.limit).map((e, i) => ({ ...e, rank: i + 1 }));
+    }),
 });

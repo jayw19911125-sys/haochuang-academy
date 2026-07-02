@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
-import { Trophy, Medal, Crown, Flame, Star, TrendingUp, Clock, Target, ChevronDown, ChevronUp, User } from "lucide-react";
+import { Trophy, Medal, Crown, Flame, Star, TrendingUp, Clock, Target, ChevronDown, ChevronUp, User, RefreshCw } from "lucide-react";
+import { trpc } from "@/lib/trpc";
+import { useDeviceId } from "@/hooks/useDeviceId";
 
 interface LeaderboardEntry {
   id: string;
@@ -166,10 +168,13 @@ function AddMemberModal({ onAdd, onClose }: AddMemberModalProps) {
 }
 
 export default function Leaderboard() {
+  const deviceId = useDeviceId();
+  const { data: dbLeaderboard, isLoading: dbLoading, refetch } = trpc.learning.getLeaderboard.useQuery({ limit: 20 });
   const [entries, setEntries] = useState<LeaderboardEntry[]>(getLeaderboardData());
   const [sortKey, setSortKey] = useState<SortKey>("overall");
   const [showAddModal, setShowAddModal] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true);
+  const [useDbData, setUseDbData] = useState(false);
 
   // Sync self data on mount
   useEffect(() => {
@@ -177,6 +182,13 @@ export default function Leaderboard() {
     setEntries(synced);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(synced));
   }, []);
+
+  // 當後端有資料時切換到真實資料
+  useEffect(() => {
+    if (dbLeaderboard && dbLeaderboard.length > 0) {
+      setUseDbData(true);
+    }
+  }, [dbLeaderboard]);
 
   const sortedEntries = useMemo(() => {
     const sorted = [...entries].sort((a, b) => {
@@ -242,12 +254,28 @@ export default function Leaderboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="px-2.5 py-1.5 rounded-lg text-[10px] font-medium text-[#F37021] border border-[#F37021]/30 hover:bg-[#F37021]/10 transition-colors"
-            >
-              + 新增成員
-            </button>
+            {useDbData && (
+              <span className="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                即時資料
+              </span>
+            )}
+            {!useDbData && (
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="px-2.5 py-1.5 rounded-lg text-[10px] font-medium text-[#F37021] border border-[#F37021]/30 hover:bg-[#F37021]/10 transition-colors"
+              >
+                + 新增成員
+              </button>
+            )}
+            {useDbData && (
+              <button
+                onClick={() => refetch()}
+                className="p-1.5 rounded-lg hover:bg-border/20 transition-colors"
+                title="刷新排行榜"
+              >
+                <RefreshCw size={13} className={`text-muted-foreground ${dbLoading ? 'animate-spin' : ''}`} />
+              </button>
+            )}
             <button
               onClick={() => setIsExpanded(!isExpanded)}
               className="p-1.5 rounded-lg hover:bg-border/20 transition-colors"
@@ -287,13 +315,57 @@ export default function Leaderboard() {
       {/* Leaderboard List */}
       {isExpanded && (
         <div className="p-3 space-y-2">
-          {sortedEntries.length === 0 ? (
+          {/* 後端即時資料模式 */}
+          {useDbData && dbLeaderboard && dbLeaderboard.length > 0 ? (
+            dbLeaderboard.map((entry) => {
+              const isSelf = entry.deviceId === deviceId;
+              return (
+                <div
+                  key={entry.deviceId}
+                  className={`flex items-center gap-3 p-3 rounded-lg border transition-all duration-200 ${getRankBg(entry.rank)} ${
+                    isSelf ? "ring-1 ring-[#F37021]/30" : ""
+                  }`}
+                >
+                  <div className="w-6 flex-shrink-0 flex items-center justify-center">
+                    {getRankIcon(entry.rank)}
+                  </div>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    isSelf ? "bg-gradient-to-br from-[#F37021] to-[#FF8C42]" : "bg-gradient-to-br from-gray-600 to-gray-700"
+                  }`}>
+                    <User size={14} className="text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-xs font-medium font-mono truncate ${isSelf ? "text-[#F37021]" : "text-foreground"}`}>
+                      {isSelf ? "我" : entry.deviceId.slice(0, 8) + "..."}
+                      {isSelf && <span className="text-[9px] ml-1 text-muted-foreground">(你)</span>}
+                    </p>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="text-[9px] text-muted-foreground flex items-center gap-1">
+                        <Target size={9} /> {entry.chaptersCompleted}/14 章
+                      </span>
+                      <span className="text-[9px] text-muted-foreground flex items-center gap-1">
+                        <TrendingUp size={9} /> {entry.avgQuizScore}%
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0 text-right">
+                    <p className={`text-lg font-black font-mono ${
+                      entry.rank === 1 ? "text-amber-400" : entry.rank <= 3 ? "text-foreground" : "text-muted-foreground"
+                    }`}>
+                      {entry.compositeScore}
+                    </p>
+                    <p className="text-[9px] text-muted-foreground">分</p>
+                  </div>
+                </div>
+              );
+            })
+          ) : !useDbData && sortedEntries.length === 0 ? (
             <div className="py-8 text-center">
               <Trophy size={32} className="mx-auto text-muted-foreground/30 mb-3" />
               <p className="text-sm text-muted-foreground">尚無排行數據</p>
               <p className="text-[10px] text-muted-foreground/70 mt-1">完成章節測驗後即可上榜</p>
             </div>
-          ) : (
+          ) : !useDbData ? (
             sortedEntries.map((entry, idx) => {
               const rank = idx + 1;
               const overallScore = calculateOverallScore(entry);
@@ -363,7 +435,7 @@ export default function Leaderboard() {
                 </div>
               );
             })
-          )}
+          ) : null}
 
           {/* Scoring Explanation */}
           <div className="mt-4 p-3 rounded-lg bg-background/30 border border-border/20">

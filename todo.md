@@ -22,7 +22,9 @@
 ## 待辦事項
 
 - [ ] 在 data.ts 各章節加入實際 YouTube videoId（需子權提供影片連結）
-- [ ] 設定 ADMIN_PASSWORD 環境變數（目前預設 haochuang2024）
-- [ ] LearningTimeTracker 前後端整合（目前僅 localStorage）
-- [ ] Leaderboard 改用後端真實資料（目前僅 localStorage）
-- [ ] MilestoneTracker 前後端整合
+- [x] 設定 ADMIN_PASSWORD 環境變數（已設定為 @asdf0308）
+- [x] LearningTimeTracker 前後端整合（雙軌並行：localStorage + tRPC 同步）
+- [x] Leaderboard 改用後端真實資料（雙軌：有後端資料時自動切換即時資料）
+- [x] 強化 LearningTimeTracker 後端同步：加入 visibilitychange flush，避免切換標籤頁時遷失記錄
+- [x] 修正 getLeaderboard 聚合邏輯：合併三表所有活躍 device，避免遷漏學員
+- [ ] MilestoneTracker 前後端整合（待子權確認需求）
