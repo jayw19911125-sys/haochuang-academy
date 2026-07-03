@@ -16,6 +16,9 @@ import {
 // 管理員授權：所有 admin procedures 一律使用 adminProcedure，
 // 由 OAuth session（ctx.user.role === "admin"）驗證，不再使用密碼 token。
 
+// CSV 匯出使用密碼保護（對外公開 API）
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "haochuang2024";
+
 export const adminRouter = router({
   // ─── 全員學習概覽 ────────────────────────────────────
 
@@ -316,10 +319,6 @@ export const adminRouter = router({
   // ─── CSV 匯出 ────────────────────────────────────────
 
   // 匯出學員完整學習記錄為 CSV
-<<<<<<< Updated upstream
-  exportLearnersCsv: adminProcedure
-    .query(async () => {
-=======
   exportLearnersCsv: publicProcedure
     .input(z.object({
       adminToken: z.string(),
@@ -331,7 +330,6 @@ export const adminRouter = router({
         return { error: "Unauthorized", csv: "" };
       }
 
->>>>>>> Stashed changes
       const db = await getDb();
       if (!db) return { error: "DB unavailable", csv: "" };
 
