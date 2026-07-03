@@ -2,6 +2,9 @@ import { z } from "zod";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { router, publicProcedure } from "../_core/trpc";
 import { getDb } from "../db";
+import { computeCompositeScore } from "@shared/compositeScore";
+import { getChapterQuiz, toPublicQuestion } from "../quizBank";
+import { createHash } from "crypto";
 import {
   chapterProgress,
   quizAttempts,
@@ -131,26 +134,63 @@ export const learningRouter = router({
 
   // ─── 測驗 ───────────────────────────────────────────
 
-  // 提交測驗成績
+  // 取得章節測驗題目（不含正解與解析，正解只在提交後的結果回應中提供）
+  getQuizQuestions: publicProcedure
+    .input(z.object({ chapterId: z.string() }))
+    .query(({ input }) => {
+      return getChapterQuiz(input.chapterId).map(toPublicQuestion);
+    }),
+
+  // 提交測驗作答（分數由伺服器端比對正解計算，不信任 client 傳來的分數）
   submitQuiz: publicProcedure
     .input(z.object({
       deviceId: z.string(),
       chapterId: z.string(),
-      score: z.number().min(0).max(100),
-      totalQuestions: z.number(),
-      correctAnswers: z.number(),
-      passed: z.boolean(),
-      timeTakenSeconds: z.number().optional(),
       answers: z.array(z.object({
         questionId: z.string(),
-        selectedAnswer: z.number(),
-        correctAnswer: z.number(),
-        isCorrect: z.boolean(),
-      })).optional(),
+        selectedAnswer: z.number().int(),
+      })),
+      timeTakenSeconds: z.number().optional(),
     }))
     .mutation(async ({ input }) => {
+      const questions = getChapterQuiz(input.chapterId);
+      if (questions.length === 0) {
+        throw new Error(`Unknown chapter: ${input.chapterId}`);
+      }
+
+      // 伺服器端計分
+      const answerMap = new Map(
+        input.answers.map(a => [a.questionId, a.selectedAnswer]),
+      );
+      const results = questions.map(q => {
+        const selectedAnswer = answerMap.get(q.id) ?? -1;
+        return {
+          questionId: q.id,
+          question: q.question,
+          options: q.options,
+          selectedAnswer,
+          correctAnswer: q.correctIndex,
+          isCorrect: selectedAnswer === q.correctIndex,
+          explanation: q.explanation,
+        };
+      });
+      const correctAnswers = results.filter(r => r.isCorrect).length;
+      const totalQuestions = questions.length;
+      const score = Math.round((correctAnswers / totalQuestions) * 100);
+      const passThreshold = Math.ceil(totalQuestions * 0.8);
+      const passed = correctAnswers >= passThreshold;
+
+      const graded = {
+        score,
+        totalQuestions,
+        correctAnswers,
+        passed,
+        passThreshold,
+        results,
+      };
+
       const db = await getDb();
-      if (!db) return { success: false, xpEarned: 0 };
+      if (!db) return { success: false, xpEarned: 0, attemptNumber: 0, ...graded };
 
       // 取得嘗試次數
       const prevAttempts = await db
@@ -160,12 +200,12 @@ export const learningRouter = router({
           eq(quizAttempts.deviceId, input.deviceId),
           eq(quizAttempts.chapterId, input.chapterId)
         ));
-      
+
       const attemptNumber = (prevAttempts[0]?.count ?? 0) + 1;
-      
+
       // 計算 XP
       let xpEarned = 0;
-      if (input.passed) {
+      if (passed) {
         // 首次通過才給 XP
         const prevPassed = await db
           .select()
@@ -178,7 +218,7 @@ export const learningRouter = router({
         
         if (!prevPassed[0]?.quizPassed) {
           xpEarned += XP_RULES.quiz_pass;
-          if (input.score === 100) xpEarned += XP_RULES.quiz_perfect;
+          if (score === 100) xpEarned += XP_RULES.quiz_perfect;
         }
       }
 
@@ -187,23 +227,28 @@ export const learningRouter = router({
         deviceId: input.deviceId,
         chapterId: input.chapterId,
         attemptNumber,
-        score: input.score,
-        totalQuestions: input.totalQuestions,
-        correctAnswers: input.correctAnswers,
-        passed: input.passed,
+        score,
+        totalQuestions,
+        correctAnswers,
+        passed,
         timeTakenSeconds: input.timeTakenSeconds,
-        answers: input.answers,
+        answers: results.map(r => ({
+          questionId: r.questionId,
+          selectedAnswer: r.selectedAnswer,
+          correctAnswer: r.correctAnswer,
+          isCorrect: r.isCorrect,
+        })),
         xpEarned,
       });
 
       // 更新章節進度
-      if (input.passed) {
+      if (passed) {
         await db.insert(chapterProgress).values({
           deviceId: input.deviceId,
           chapterId: input.chapterId,
           isRead: true,
           quizPassed: true,
-          quizScore: input.score,
+          quizScore: score,
           quizAttempts: attemptNumber,
           lastQuizAt: new Date(),
           isUnlocked: true,
@@ -212,7 +257,7 @@ export const learningRouter = router({
         }).onDuplicateKeyUpdate({
           set: {
             quizPassed: true,
-            quizScore: sql`GREATEST(quiz_score, ${input.score})`,
+            quizScore: sql`GREATEST(quiz_score, ${score})`,
             quizAttempts: sql`quiz_attempts + 1`,
             lastQuizAt: new Date(),
             isCompleted: true,
@@ -235,7 +280,7 @@ export const learningRouter = router({
         });
       }
 
-      return { success: true, xpEarned, attemptNumber };
+      return { success: true, xpEarned, attemptNumber, ...graded };
     }),
 
   // 取得測驗歷史
@@ -534,8 +579,14 @@ export const learningRouter = router({
     }),
 
   // 公開排行榜（前台用，不需要管理員權限）
+  // 注意：不回傳完整 deviceId（deviceId 是讀取個人學習資料的識別碼，
+  // 公開完整值會讓任何人可代入其他學員的 deviceId 讀取其資料）
   getLeaderboard: publicProcedure
-    .input(z.object({ limit: z.number().min(1).max(50).default(20) }))
+    .input(z.object({
+      limit: z.number().min(1).max(50).default(20),
+      // 呼叫者自己的 deviceId（可選），僅用於標記排行榜上的「我」
+      deviceId: z.string().optional(),
+    }))
     .query(async ({ input }) => {
       const db = await getDb();
       if (!db) return [];
@@ -585,27 +636,45 @@ export const learningRouter = router({
         .from(learningTimeLogs)
         .groupBy(learningTimeLogs.deviceId);
 
+      // 每日一題統計（綜合評分第四項，與管理後台一致）
+      const dailyStats = await db
+        .select({
+          deviceId: dailyQuizRecords.deviceId,
+          totalAnswered: sql<number>`count(*)`,
+          correctCount: sql<number>`sum(case when is_correct = 1 then 1 else 0 end)`,
+        })
+        .from(dailyQuizRecords)
+        .where(eq(dailyQuizRecords.isAnswered, true))
+        .groupBy(dailyQuizRecords.deviceId);
+
       const progressMap = new Map(progressStats.map(p => [p.deviceId ?? "", p]));
       const quizMap = new Map(quizStats.map(q => [q.deviceId ?? "", q]));
       const timeMap = new Map(timeStats.map(t => [t.deviceId ?? "", t]));
+      const dailyMap = new Map(dailyStats.map(d => [d.deviceId ?? "", d]));
 
       const entries = allDeviceIds.map(deviceId => {
         const progress = progressMap.get(deviceId);
         const quiz = quizMap.get(deviceId);
         const time = timeMap.get(deviceId);
+        const daily = dailyMap.get(deviceId);
         const chaptersCompleted = progress?.chaptersCompleted ?? 0;
         const avgScore = quiz?.avgScore ?? 0;
         const totalSeconds = time?.totalSeconds ?? 0;
 
-        // 綜合評分（與管理後台一致）
-        const compositeScore = Math.round(
-          (chaptersCompleted / 14) * 40 +
-          (avgScore / 100) * 30 +
-          Math.min(totalSeconds / 3600, 10) * 2
-        );
+        // 綜合評分（與管理後台一致，共用 shared/compositeScore）
+        const compositeScore = computeCompositeScore({
+          chaptersCompleted,
+          avgQuizScore: avgScore,
+          totalLearningSeconds: totalSeconds,
+          dailyQuizCorrect: daily?.correctCount ?? 0,
+          dailyQuizAnswered: daily?.totalAnswered ?? 0,
+        });
 
         return {
-          deviceId,
+          // 匿名化識別碼：hash 後截斷，不可反推完整 deviceId
+          entryId: createHash("sha256").update(deviceId).digest("hex").slice(0, 16),
+          displayId: `${deviceId.slice(0, 8)}...`,
+          isSelf: input.deviceId != null && deviceId === input.deviceId,
           chaptersCompleted,
           progressPercent: Math.round((chaptersCompleted / 14) * 100),
           avgQuizScore: Math.round(avgScore),

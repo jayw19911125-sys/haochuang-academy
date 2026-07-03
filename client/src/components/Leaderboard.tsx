@@ -169,7 +169,9 @@ function AddMemberModal({ onAdd, onClose }: AddMemberModalProps) {
 
 export default function Leaderboard() {
   const deviceId = useDeviceId();
-  const { data: dbLeaderboard, isLoading: dbLoading, refetch } = trpc.learning.getLeaderboard.useQuery({ limit: 20 });
+  const { data: dbLeaderboard, isLoading: dbLoading, refetch } = trpc.learning.getLeaderboard.useQuery(
+    { limit: 20, deviceId: deviceId || undefined }
+  );
   const [entries, setEntries] = useState<LeaderboardEntry[]>(getLeaderboardData());
   const [sortKey, setSortKey] = useState<SortKey>("overall");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -318,10 +320,10 @@ export default function Leaderboard() {
           {/* 後端即時資料模式 */}
           {useDbData && dbLeaderboard && dbLeaderboard.length > 0 ? (
             dbLeaderboard.map((entry) => {
-              const isSelf = entry.deviceId === deviceId;
+              const isSelf = entry.isSelf;
               return (
                 <div
-                  key={entry.deviceId}
+                  key={entry.entryId}
                   className={`flex items-center gap-3 p-3 rounded-lg border transition-all duration-200 ${getRankBg(entry.rank)} ${
                     isSelf ? "ring-1 ring-[#F37021]/30" : ""
                   }`}
@@ -336,7 +338,7 @@ export default function Leaderboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-xs font-medium font-mono truncate ${isSelf ? "text-[#F37021]" : "text-foreground"}`}>
-                      {isSelf ? "我" : entry.deviceId.slice(0, 8) + "..."}
+                      {isSelf ? "我" : entry.displayId}
                       {isSelf && <span className="text-[9px] ml-1 text-muted-foreground">(你)</span>}
                     </p>
                     <div className="flex items-center gap-3 mt-1">
