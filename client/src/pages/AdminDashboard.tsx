@@ -120,9 +120,8 @@ function LearnersTable() {
   const [dateTo, setDateTo] = useState("");
   const [showDateFilter, setShowDateFilter] = useState(false);
 
-  // exportLearnersCsv 使用 adminToken 字段（後端已由 OAuth session 驗證，adminToken 僅為相容性保留）
   const exportCsvQuery = trpc.admin.exportLearnersCsv.useQuery(
-    { adminToken: "", dateFrom: dateFrom || undefined, dateTo: dateTo || undefined },
+    { dateFrom: dateFrom || undefined, dateTo: dateTo || undefined },
     { enabled: false } // 手動觸發
   );
 
