@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Trophy, Clock, Target, Zap, Star, ChevronDown } from "lucide-react";
+import { Check, Trophy, Clock, Target, Zap, Star, ChevronDown, Link2, Copy, CheckCheck, ExternalLink } from "lucide-react";
 import { trpc } from "@/lib/trpc";
-import { useDeviceId } from "@/hooks/useDeviceId";
+import { useDeviceId, getSharedDeviceIdFromUrl } from "@/hooks/useDeviceId";
 
 interface MilestoneTask {
   id: string;
@@ -85,10 +85,51 @@ const categoryColors: Record<string, { bg: string; text: string; icon: React.Rea
 };
 
 export default function MilestoneTracker() {
-  const deviceId = useDeviceId();
+  const ownDeviceId = useDeviceId();
+  // 分享模式：URL 有 ?share=dev_xxx 時讀取分享者的進度（唯讀）
+  const sharedDeviceId = getSharedDeviceIdFromUrl();
+  const isViewingShared = !!sharedDeviceId;
+  const deviceId = sharedDeviceId ?? ownDeviceId;
+
   const [completedTasks, setCompletedTasks] = useState<Record<string, boolean>>({});
   const [expandedWeek, setExpandedWeek] = useState<number>(1);
   const [backendLoaded, setBackendLoaded] = useState(false);
+  const [showSharePanel, setShowSharePanel] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [lastCheckedId, setLastCheckedId] = useState<string | null>(null); // 用於勾選動畫
+  const sharePanelRef = useRef<HTMLDivElement>(null);
+
+  const shareUrl = `${window.location.origin}${window.location.pathname}?share=${ownDeviceId}`;
+
+  const handleCopyShareLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // fallback
+      const ta = document.createElement("textarea");
+      ta.value = shareUrl;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }
+  };
+
+  // 點擊外部關閉分享面板
+  useEffect(() => {
+    if (!showSharePanel) return;
+    const handleClick = (e: MouseEvent) => {
+      if (sharePanelRef.current && !sharePanelRef.current.contains(e.target as Node)) {
+        setShowSharePanel(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [showSharePanel]);
 
   // 後端讀取
   const { data: backendProgress } = trpc.learning.getMilestoneProgress.useQuery(
@@ -139,13 +180,17 @@ export default function MilestoneTracker() {
   }, [completedTasks]);
 
   const toggleTask = (taskId: string) => {
+    // 分享模式下禁止修改
+    if (isViewingShared) return;
     const newValue = !completedTasks[taskId];
     setCompletedTasks(prev => ({ ...prev, [taskId]: newValue }));
+    // 勾選動畫觸發
+    if (newValue) setLastCheckedId(taskId);
     // 同步到後端
-    if (deviceId) {
+    if (ownDeviceId) {
       const weekNumber = milestoneData.find(w => w.tasks.some(t => t.id === taskId))?.week ?? 1;
       toggleMutation.mutate({
-        deviceId,
+        deviceId: ownDeviceId,
         milestoneId: taskId,
         weekNumber,
         isChecked: newValue,
@@ -168,6 +213,21 @@ export default function MilestoneTracker() {
 
   return (
     <div className="space-y-6">
+      {/* 分享模式提示橫幅 */}
+      <AnimatePresence>
+        {isViewingShared && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs"
+          >
+            <ExternalLink size={13} />
+            <span>目前正在檢視分享進度（唯讀）——要記錄自己的進度，請從主頁進入</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Overall Progress Card */}
       <div className="glass-card p-6">
         <div className="flex items-center justify-between mb-4">
@@ -180,18 +240,72 @@ export default function MilestoneTracker() {
               <p className="text-[11px] text-muted-foreground">{overall.completed} / {overall.total} 任務已完成</p>
             </div>
           </div>
-          <div className="text-2xl font-black text-[#F37021]">{overall.percent}%</div>
+          <div className="flex items-center gap-3">
+            <div className="text-2xl font-black text-[#F37021]">{overall.percent}%</div>
+            {/* 分享按鈕（非分享模式才顯示） */}
+            {!isViewingShared && (
+              <div className="relative" ref={sharePanelRef}>
+                <button
+                  onClick={() => setShowSharePanel(v => !v)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-[#F37021] hover:bg-[#F37021]/10 transition-all duration-200 border border-transparent hover:border-[#F37021]/20"
+                  title="產生專屬進度連結"
+                >
+                  <Link2 size={13} />
+                  分享
+                </button>
+                <AnimatePresence>
+                  {showSharePanel && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95, y: 4 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: 4 }}
+                      transition={{ duration: 0.15, ease: [0.23, 1, 0.32, 1] }}
+                      className="absolute right-0 top-full mt-2 z-50 w-72 glass-card p-4 shadow-xl"
+                      style={{ transformOrigin: "top right" }}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <Link2 size={14} className="text-[#F37021]" />
+                        <span className="text-xs font-semibold text-foreground">專屬進度連結</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground mb-3">將這個連結複製到其他裝置，即可繼續追蹤進度。</p>
+                      <div className="flex items-center gap-2 p-2 rounded-lg bg-border/20 border border-border/30">
+                        <span className="flex-1 text-[10px] text-muted-foreground truncate font-mono">{shareUrl}</span>
+                        <button
+                          onClick={handleCopyShareLink}
+                          className={`flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-all duration-200 ${
+                            copied
+                              ? "bg-green-500/20 text-green-400"
+                              : "bg-[#F37021]/20 text-[#F37021] hover:bg-[#F37021]/30"
+                          }`}
+                        >
+                          {copied ? <><CheckCheck size={11} /> 已複製</> : <><Copy size={11} /> 複製</>}
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+          </div>
         </div>
         
-        {/* Progress Bar */}
-        <div className="h-2 rounded-full bg-border/30 overflow-hidden">
+        {/* Progress Bar - 帶動畫的進度條 */}
+        <div className="h-2.5 rounded-full bg-border/30 overflow-hidden">
           <motion.div
             className="h-full rounded-full bg-gradient-to-r from-[#F37021] to-[#FF8C42]"
             initial={{ width: 0 }}
             animate={{ width: `${overall.percent}%` }}
             transition={{ duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
-            style={{ boxShadow: "0 0 10px rgba(243,112,33,0.4)" }}
+            style={{ boxShadow: "0 0 12px rgba(243,112,33,0.5)" }}
           />
+        </div>
+        {/* 進度文字說明 */}
+        <div className="flex justify-between mt-1.5">
+          <span className="text-[10px] text-muted-foreground">起點</span>
+          <span className="text-[10px] text-muted-foreground">
+            {overall.percent < 100 ? `還有 ${overall.total - overall.completed} 項任務` : "🎉 全部完成！"}
+          </span>
+          <span className="text-[10px] text-muted-foreground">筆業</span>
         </div>
 
         {/* Week Mini Progress */}
@@ -242,11 +356,28 @@ export default function MilestoneTracker() {
                 }`}>
                   {wp.percent === 100 ? <Check size={16} /> : `W${week.week}`}
                 </div>
-                <div className="text-left">
+                <div className="text-left flex-1">
                   <h4 className="text-sm font-semibold text-foreground">
                     第 {week.week} 週：{week.title}
                   </h4>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{week.goal}</p>
+                  {/* 週進度條 */}
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="flex-1 h-1 rounded-full bg-border/30 overflow-hidden">
+                      <motion.div
+                        className={`h-full rounded-full ${
+                          wp.percent === 100
+                            ? "bg-gradient-to-r from-green-500 to-emerald-400"
+                            : "bg-gradient-to-r from-[#F37021] to-[#FF8C42]"
+                        }`}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${wp.percent}%` }}
+                        transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1], delay: 0.1 }}
+                      />
+                    </div>
+                    <span className={`text-[10px] font-medium ${
+                      wp.percent === 100 ? "text-green-400" : "text-muted-foreground"
+                    }`}>{wp.percent}%</span>
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -282,17 +413,37 @@ export default function MilestoneTracker() {
                           className="flex items-start gap-3 p-3 rounded-lg hover:bg-border/10 transition-colors cursor-pointer group"
                           onClick={() => toggleTask(task.id)}
                         >
-                          {/* Checkbox */}
-                          <div className={`
-                            flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center mt-0.5
-                            transition-all duration-200
-                            ${isChecked 
-                              ? "bg-[#F37021] border-[#F37021]" 
-                              : "border-border/50 group-hover:border-[#F37021]/50"
-                            }
-                          `}>
-                            {isChecked && <Check size={12} className="text-white" />}
-                          </div>
+                          {/* Checkbox - 勾選時 bounce 動畫 */}
+                          <motion.div
+                            className={`
+                              flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center mt-0.5
+                              transition-colors duration-200
+                              ${isChecked 
+                                ? "bg-[#F37021] border-[#F37021]" 
+                                : "border-border/50 group-hover:border-[#F37021]/50"
+                              }
+                            `}
+                            animate={lastCheckedId === task.id ? {
+                              scale: [1, 1.3, 0.9, 1.1, 1],
+                            } : {}}
+                            transition={{ duration: 0.35, ease: "easeOut" }}
+                            onAnimationComplete={() => {
+                              if (lastCheckedId === task.id) setLastCheckedId(null);
+                            }}
+                          >
+                            <AnimatePresence>
+                              {isChecked && (
+                                <motion.div
+                                  initial={{ scale: 0, opacity: 0 }}
+                                  animate={{ scale: 1, opacity: 1 }}
+                                  exit={{ scale: 0, opacity: 0 }}
+                                  transition={{ duration: 0.15 }}
+                                >
+                                  <Check size={12} className="text-white" />
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </motion.div>
 
                           {/* Content */}
                           <div className="flex-1 min-w-0">

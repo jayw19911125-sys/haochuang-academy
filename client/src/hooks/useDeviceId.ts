@@ -43,9 +43,21 @@ function generateDeviceId(): string {
 
 const DEVICE_ID_KEY = "haochuang-device-id";
 
+/**
+ * 從 URL 參數讀取分享的 deviceId
+ * 支援格式：?share=dev_xxxxxxxx_xxxxxx
+ */
+export function getSharedDeviceIdFromUrl(): string | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  const shared = params.get("share");
+  if (shared && shared.startsWith("dev_")) return shared;
+  return null;
+}
+
 export function useDeviceId(): string {
   const [deviceId, setDeviceId] = useState<string>(() => {
-    // SSR 安全：先嘗試從 localStorage 讀取
+    // SSR 安全、先嘗試從 localStorage 讀取
     if (typeof window === "undefined") return "";
     
     const stored = localStorage.getItem(DEVICE_ID_KEY);

@@ -316,17 +316,63 @@ export const adminRouter = router({
   // ─── CSV 匯出 ────────────────────────────────────────
 
   // 匯出學員完整學習記錄為 CSV
+<<<<<<< Updated upstream
   exportLearnersCsv: adminProcedure
     .query(async () => {
+=======
+  exportLearnersCsv: publicProcedure
+    .input(z.object({
+      adminToken: z.string(),
+      dateFrom: z.string().optional(), // ISO date string, e.g. "2024-01-01"
+      dateTo: z.string().optional(),   // ISO date string, e.g. "2024-12-31"
+    }))
+    .query(async ({ input }) => {
+      if (input.adminToken !== ADMIN_PASSWORD) {
+        return { error: "Unauthorized", csv: "" };
+      }
+
+>>>>>>> Stashed changes
       const db = await getDb();
       if (!db) return { error: "DB unavailable", csv: "" };
 
-      // 從四個表各自取得所有活躍 device
+      // 日期範圍轉換（包含終止日當天 23:59:59）
+      const fromTs = input.dateFrom ? new Date(input.dateFrom).getTime() : null;
+      const toTs = input.dateTo ? new Date(input.dateTo + "T23:59:59").getTime() : null;
+
+      // 建立日期範圍横幅標籤（加入 CSV 標頭說明用）
+      const dateRangeLabel = fromTs || toTs
+        ? `（範圍：${input.dateFrom ?? "不限"} ~ ${input.dateTo ?? "不限"}）`
+        : "";
+
+      // 從四個表各自取得日期範圍內活躍 device
+      const buildDateFilter = (col: any) => {
+        const conditions = [];
+        if (fromTs) conditions.push(gte(col, new Date(fromTs)));
+        if (toTs) conditions.push(lte(col, new Date(toTs)));
+        return conditions.length > 0 ? and(...conditions) : undefined;
+      };
+
       const [progressDevices, quizDevices, timeDevices, dailyDevices] = await Promise.all([
-        db.select({ deviceId: chapterProgress.deviceId }).from(chapterProgress).groupBy(chapterProgress.deviceId),
-        db.select({ deviceId: quizAttempts.deviceId }).from(quizAttempts).groupBy(quizAttempts.deviceId),
-        db.select({ deviceId: learningTimeLogs.deviceId }).from(learningTimeLogs).groupBy(learningTimeLogs.deviceId),
-        db.select({ deviceId: dailyQuizRecords.deviceId }).from(dailyQuizRecords).groupBy(dailyQuizRecords.deviceId),
+        (() => {
+          const q = db.select({ deviceId: chapterProgress.deviceId }).from(chapterProgress);
+          const f = buildDateFilter(chapterProgress.updatedAt);
+          return (f ? q.where(f) : q).groupBy(chapterProgress.deviceId);
+        })(),
+        (() => {
+          const q = db.select({ deviceId: quizAttempts.deviceId }).from(quizAttempts);
+          const f = buildDateFilter(quizAttempts.createdAt);
+          return (f ? q.where(f) : q).groupBy(quizAttempts.deviceId);
+        })(),
+        (() => {
+          const q = db.select({ deviceId: learningTimeLogs.deviceId }).from(learningTimeLogs);
+          const f = buildDateFilter(learningTimeLogs.createdAt);
+          return (f ? q.where(f) : q).groupBy(learningTimeLogs.deviceId);
+        })(),
+        (() => {
+          const q = db.select({ deviceId: dailyQuizRecords.deviceId }).from(dailyQuizRecords);
+          const f = buildDateFilter(dailyQuizRecords.createdAt);
+          return (f ? q.where(f) : q).groupBy(dailyQuizRecords.deviceId);
+        })(),
       ]);
 
       const allDeviceIds = Array.from(new Set([
@@ -336,40 +382,74 @@ export const adminRouter = router({
         ...dailyDevices.map(d => d.deviceId ?? ""),
       ].filter(Boolean)));
 
-      if (allDeviceIds.length === 0) return { error: null, csv: "\u7121資料" };
+      if (allDeviceIds.length === 0) return { error: null, csv: `無資料${dateRangeLabel}` };
 
-      // 各表統計
+      // 各表統計（同樣加日期範圍篩選）
+      const progressDateFilter = buildDateFilter(chapterProgress.updatedAt);
+      const quizDateFilter = buildDateFilter(quizAttempts.createdAt);
+      const timeDateFilter = buildDateFilter(learningTimeLogs.createdAt);
+      const dailyDateFilter = buildDateFilter(dailyQuizRecords.createdAt);
+
       const [progressStats, quizStats, timeStats, dailyStats] = await Promise.all([
-        db.select({
-          deviceId: chapterProgress.deviceId,
-          chaptersCompleted: sql<number>`sum(case when quiz_passed = 1 then 1 else 0 end)`,
-          chaptersRead: sql<number>`sum(case when is_read = 1 then 1 else 0 end)`,
-          lastActivity: sql<Date>`max(updated_at)`,
-        }).from(chapterProgress).groupBy(chapterProgress.deviceId),
+        (progressDateFilter
+          ? db.select({
+              deviceId: chapterProgress.deviceId,
+              chaptersCompleted: sql<number>`sum(case when quiz_passed = 1 then 1 else 0 end)`,
+              chaptersRead: sql<number>`sum(case when is_read = 1 then 1 else 0 end)`,
+              lastActivity: sql<Date>`max(updated_at)`,
+            }).from(chapterProgress).where(progressDateFilter)
+          : db.select({
+              deviceId: chapterProgress.deviceId,
+              chaptersCompleted: sql<number>`sum(case when quiz_passed = 1 then 1 else 0 end)`,
+              chaptersRead: sql<number>`sum(case when is_read = 1 then 1 else 0 end)`,
+              lastActivity: sql<Date>`max(updated_at)`,
+            }).from(chapterProgress)
+        ).groupBy(chapterProgress.deviceId),
 
-        db.select({
-          deviceId: quizAttempts.deviceId,
-          totalAttempts: sql<number>`count(*)`,
-          avgScore: sql<number>`avg(score)`,
-          passedCount: sql<number>`sum(case when passed = 1 then 1 else 0 end)`,
-        }).from(quizAttempts).groupBy(quizAttempts.deviceId),
+        (quizDateFilter
+          ? db.select({
+              deviceId: quizAttempts.deviceId,
+              totalAttempts: sql<number>`count(*)`,
+              avgScore: sql<number>`avg(score)`,
+              passedCount: sql<number>`sum(case when passed = 1 then 1 else 0 end)`,
+            }).from(quizAttempts).where(quizDateFilter)
+          : db.select({
+              deviceId: quizAttempts.deviceId,
+              totalAttempts: sql<number>`count(*)`,
+              avgScore: sql<number>`avg(score)`,
+              passedCount: sql<number>`sum(case when passed = 1 then 1 else 0 end)`,
+            }).from(quizAttempts)
+        ).groupBy(quizAttempts.deviceId),
 
-        db.select({
-          deviceId: learningTimeLogs.deviceId,
-          totalSeconds: sql<number>`sum(total_seconds)`,
-        }).from(learningTimeLogs).groupBy(learningTimeLogs.deviceId),
+        (timeDateFilter
+          ? db.select({
+              deviceId: learningTimeLogs.deviceId,
+              totalSeconds: sql<number>`sum(total_seconds)`,
+            }).from(learningTimeLogs).where(timeDateFilter)
+          : db.select({
+              deviceId: learningTimeLogs.deviceId,
+              totalSeconds: sql<number>`sum(total_seconds)`,
+            }).from(learningTimeLogs)
+        ).groupBy(learningTimeLogs.deviceId),
 
-        db.select({
-          deviceId: dailyQuizRecords.deviceId,
-          totalAnswered: sql<number>`count(*)`,
-          correctCount: sql<number>`sum(case when is_correct = 1 then 1 else 0 end)`,
-        }).from(dailyQuizRecords).where(eq(dailyQuizRecords.isAnswered, true)).groupBy(dailyQuizRecords.deviceId),
+        (dailyDateFilter
+          ? db.select({
+              deviceId: dailyQuizRecords.deviceId,
+              totalAnswered: sql<number>`count(*)`,
+              correctCount: sql<number>`sum(case when is_correct = 1 then 1 else 0 end)`,
+            }).from(dailyQuizRecords).where(and(eq(dailyQuizRecords.isAnswered, true), dailyDateFilter))
+          : db.select({
+              deviceId: dailyQuizRecords.deviceId,
+              totalAnswered: sql<number>`count(*)`,
+              correctCount: sql<number>`sum(case when is_correct = 1 then 1 else 0 end)`,
+            }).from(dailyQuizRecords).where(eq(dailyQuizRecords.isAnswered, true))
+        ).groupBy(dailyQuizRecords.deviceId),
       ]);
 
-      const progressMap = new Map(progressStats.map(p => [p.deviceId ?? "", p]));
-      const quizMap = new Map(quizStats.map(q => [q.deviceId ?? "", q]));
-      const timeMap = new Map(timeStats.map(t => [t.deviceId ?? "", t]));
-      const dailyMap = new Map(dailyStats.map(d => [d.deviceId ?? "", d]));
+      const progressMap = new Map(progressStats.map((p: typeof progressStats[0]) => [p.deviceId ?? "", p]));
+      const quizMap = new Map(quizStats.map((q: typeof quizStats[0]) => [q.deviceId ?? "", q]));
+      const timeMap = new Map(timeStats.map((t: typeof timeStats[0]) => [t.deviceId ?? "", t]));
+      const dailyMap = new Map(dailyStats.map((d: typeof dailyStats[0]) => [d.deviceId ?? "", d]));
 
       // 建立 CSV
       const headers = [

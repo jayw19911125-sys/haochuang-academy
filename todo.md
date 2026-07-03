@@ -27,9 +27,15 @@
 - [x] Leaderboard 改用後端真實資料（雙軌：有後端資料時自動切換即時資料）
 - [x] 強化 LearningTimeTracker 後端同步：加入 visibilitychange flush，避免切換標籤頁時遷失記錄
 - [x] 修正 getLeaderboard 聚合邏輯：合併三表所有活躍 device，避免遷漏學員
-- [ ] MilestoneTracker 前後端整合（待子權確認需求）
+- [x] MilestoneTracker 前後端整合（已完成，見新需求區塊）
 
 ## 新需求（2026-07-02）
 
 - [x] MilestoneTracker 後端整合：DB schema + API + 前端雙軌同步（跨裝置不遷失）
 - [x] 管理後台 CSV 匯出：所有學員進度 + 測驗成績下載為 CSV
+
+## 新需求（2026-07-02 第二批）
+
+- [x] MilestoneTracker 產生專屬進度連結（URL ?share=deviceId，分享模式唯讀，點擊外部關閉面板）
+- [x] MilestoneTracker 進度條視覺化動畫（總進度條加粗 + 小語說明，每週進度條，勾選 bounce 動畫）
+- [x] 管理後台 CSV 匯出加入日期範圍篩選（日曆圖示面板，篩選後檔名自動加入範圍標記）

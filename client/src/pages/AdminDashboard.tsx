@@ -6,7 +6,7 @@ import {
   Users, BookOpen, Trophy, TrendingUp, AlertCircle, 
   CheckCircle2, Clock, Target, BarChart3, Bell, 
   Plus, Trash2, Pin, Eye, EyeOff, LogOut, Lock,
-  ChevronDown, ChevronUp, RefreshCw, Download
+  ChevronDown, ChevronUp, RefreshCw, Download, Calendar
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -115,8 +115,17 @@ function LearnersTable() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
+  // 日期範圍篩選 state
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [showDateFilter, setShowDateFilter] = useState(false);
+
   const exportCsvQuery = trpc.admin.exportLearnersCsv.useQuery(
+<<<<<<< Updated upstream
     undefined,
+=======
+    { adminToken, dateFrom: dateFrom || undefined, dateTo: dateTo || undefined },
+>>>>>>> Stashed changes
     { enabled: false } // 手動觸發
   );
 
@@ -134,14 +143,19 @@ function LearnersTable() {
       }
       const csvContent = result.data?.csv ?? "";
       // 空資料時仍輸出標頭 CSV
-      const finalCsv = csvContent === "無資料" || csvContent === ""
+      const isNoData = csvContent === "" || csvContent.startsWith("無資料");
+      const finalCsv = isNoData
         ? "裝置 ID,綜合評分,章節完成數,章節閱讀數,進度%,測驗平均分,測驗通過數,測驗嘗試次數,學習總時間(小時),每日一題已作答,每日一題正確率%,最後活躍時間"
         : csvContent;
-      const blob = new Blob(["\uFEFF" + finalCsv], { type: "text/csv;charset=utf-8;" });
+      // 檔名加入日期範圍標記
+      const rangeTag = dateFrom || dateTo
+        ? `_${dateFrom || "start"}_to_${dateTo || "end"}`
+        : "";
+      const blob = new Blob(["﻿" + finalCsv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `好創學員學習記錄_${new Date().toLocaleDateString("zh-TW").replace(/\//g, "-")}.csv`;
+      a.download = `好創學員學習記錄${rangeTag}_${new Date().toLocaleDateString("zh-TW").replace(/\//g, "-")}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -208,6 +222,60 @@ function LearnersTable() {
           </button>
         ))}
         <div className="ml-auto flex items-center gap-2">
+          {/* 日期範圍篩選 */}
+          <div className="relative">
+            <button
+              onClick={() => setShowDateFilter(v => !v)}
+              className={`text-xs flex items-center gap-1 px-2 py-1 rounded transition-all ${
+                (dateFrom || dateTo)
+                  ? "text-blue-400 bg-blue-500/10 border border-blue-500/20"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              title="日期範圍篩選"
+            >
+              <Calendar size={12} />
+              {(dateFrom || dateTo) ? `${dateFrom || "不限"} ~ ${dateTo || "不限"}` : "日期範圍"}
+            </button>
+            {showDateFilter && (
+              <div className="absolute right-0 top-full mt-1 z-50 glass-card p-3 shadow-xl w-56">
+                <div className="text-[11px] text-muted-foreground mb-2">篩選活躍日期範圍</div>
+                <div className="space-y-2">
+                  <div>
+                    <label className="text-[10px] text-muted-foreground">開始日期</label>
+                    <input
+                      type="date"
+                      value={dateFrom}
+                      onChange={e => setDateFrom(e.target.value)}
+                      className="w-full mt-0.5 px-2 py-1 rounded bg-border/20 border border-border/30 text-xs text-foreground focus:outline-none focus:border-[#F37021]/50"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-muted-foreground">結束日期</label>
+                    <input
+                      type="date"
+                      value={dateTo}
+                      onChange={e => setDateTo(e.target.value)}
+                      className="w-full mt-0.5 px-2 py-1 rounded bg-border/20 border border-border/30 text-xs text-foreground focus:outline-none focus:border-[#F37021]/50"
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={() => { setDateFrom(""); setDateTo(""); }}
+                      className="flex-1 text-[11px] py-1 rounded bg-border/20 hover:bg-border/40 text-muted-foreground transition-colors"
+                    >
+                      清除
+                    </button>
+                    <button
+                      onClick={() => setShowDateFilter(false)}
+                      className="flex-1 text-[11px] py-1 rounded bg-[#F37021]/20 hover:bg-[#F37021]/30 text-[#F37021] transition-colors"
+                    >
+                      確認
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
           <button
             onClick={handleExportCsv}
             disabled={isExporting}
