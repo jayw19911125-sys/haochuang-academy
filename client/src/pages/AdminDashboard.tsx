@@ -1,5 +1,7 @@
 import { useState, useMemo } from "react";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
 import { 
   Users, BookOpen, Trophy, TrendingUp, AlertCircle, 
   CheckCircle2, Clock, Target, BarChart3, Bell, 
@@ -28,22 +30,9 @@ function shortDeviceId(id: string): string {
   return id.slice(0, 12) + "...";
 }
 
-// ─── 登入頁面 ────────────────────────────────────────────
-function AdminLogin({ onLogin }: { onLogin: (token: string) => void }) {
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const verifyMutation = trpc.admin.verifyAdmin.useMutation();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    const result = await verifyMutation.mutateAsync({ password });
-    if (result.success) {
-      onLogin(password);
-    } else {
-      setError("密碼錯誤，請重試");
-    }
-  };
+// ─── 登入 / 權限提示頁面（OAuth）──────────────────────────
+function AdminAuthGate({ mode }: { mode: "login" | "forbidden" }) {
+  const { logout } = useAuth();
 
   return (
     <div className="min-h-screen flex items-center justify-center noise-overlay gradient-mesh-bg">
@@ -63,31 +52,35 @@ function AdminLogin({ onLogin }: { onLogin: (token: string) => void }) {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="text-xs text-muted-foreground mb-1.5 block">管理員密碼</label>
-            <Input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              placeholder="輸入密碼..."
-              className="bg-background/50"
-              autoFocus
-            />
-          </div>
-          {error && (
-            <p className="text-xs text-red-400 flex items-center gap-1">
-              <AlertCircle size={12} /> {error}
+        {mode === "login" ? (
+          <div className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              請先登入，僅限管理員帳號存取後台。
             </p>
-          )}
-          <Button 
-            type="submit" 
-            className="w-full bg-[#F37021] hover:bg-[#FF8C42] text-white"
-            disabled={verifyMutation.isPending}
-          >
-            {verifyMutation.isPending ? "驗證中..." : "進入後台"}
-          </Button>
-        </form>
+            <Button
+              className="w-full bg-[#F37021] hover:bg-[#FF8C42] text-white"
+              onClick={() => { window.location.href = getLoginUrl(); }}
+            >
+              前往登入
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-xs text-red-400 flex items-center gap-1">
+              <AlertCircle size={12} /> 此帳號沒有管理員權限
+            </p>
+            <p className="text-xs text-muted-foreground">
+              如需存取後台，請聯繫網站擁有者將你的帳號設為管理員。
+            </p>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => { void logout(); }}
+            >
+              登出並切換帳號
+            </Button>
+          </div>
+        )}
       </motion.div>
     </div>
   );
@@ -116,14 +109,14 @@ function StatCard({ title, value, sub, icon: Icon, color }: {
 }
 
 // ─── 學員列表 ────────────────────────────────────────────
-function LearnersTable({ adminToken }: { adminToken: string }) {
-  const { data, isLoading, refetch } = trpc.admin.getAllLearnersOverview.useQuery({ adminToken });
+function LearnersTable() {
+  const { data, isLoading, refetch } = trpc.admin.getAllLearnersOverview.useQuery();
   const [sortBy, setSortBy] = useState<"compositeScore" | "chaptersCompleted" | "totalLearningHours">("compositeScore");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
   const exportCsvQuery = trpc.admin.exportLearnersCsv.useQuery(
-    { adminToken },
+    undefined,
     { enabled: false } // 手動觸發
   );
 
@@ -131,7 +124,7 @@ function LearnersTable({ adminToken }: { adminToken: string }) {
     setIsExporting(true);
     try {
       const result = await exportCsvQuery.refetch();
-      if (result.data?.error === "Unauthorized") {
+      if (result.error) {
         alert("權限不足，請重新登入");
         return;
       }
@@ -320,8 +313,8 @@ function LearnersTable({ adminToken }: { adminToken: string }) {
 }
 
 // ─── 章節完成率 ──────────────────────────────────────────
-function ChapterStats({ adminToken }: { adminToken: string }) {
-  const { data: stats, isLoading } = trpc.admin.getChapterCompletionStats.useQuery({ adminToken });
+function ChapterStats() {
+  const { data: stats, isLoading } = trpc.admin.getChapterCompletionStats.useQuery();
 
   if (isLoading) return (
     <div className="glass-card p-6 text-center text-muted-foreground text-sm">
@@ -379,8 +372,8 @@ function ChapterStats({ adminToken }: { adminToken: string }) {
 }
 
 // ─── 難題分析 ────────────────────────────────────────────
-function HardQuestions({ adminToken }: { adminToken: string }) {
-  const { data: questions, isLoading } = trpc.admin.getHardQuestions.useQuery({ adminToken });
+function HardQuestions() {
+  const { data: questions, isLoading } = trpc.admin.getHardQuestions.useQuery();
 
   if (isLoading) return (
     <div className="glass-card p-6 text-center text-muted-foreground text-sm">
@@ -419,10 +412,9 @@ function HardQuestions({ adminToken }: { adminToken: string }) {
 }
 
 // ─── 公告管理 ────────────────────────────────────────────
-function AnnouncementManager({ adminToken }: { adminToken: string }) {
+function AnnouncementManager() {
   const utils = trpc.useUtils();
-  const { data: announcements, isLoading } = trpc.admin.getAnnouncements.useQuery({ adminToken
- });
+  const { data: announcements, isLoading } = trpc.admin.getAnnouncements.useQuery();
   const createMutation = trpc.admin.createAnnouncement.useMutation({
     onSuccess: () => {
       utils.admin.getAnnouncements.invalidate();
@@ -444,7 +436,6 @@ function AnnouncementManager({ adminToken }: { adminToken: string }) {
   const handleCreate = () => {
     if (!newTitle.trim() || !newContent.trim()) return;
     createMutation.mutate({
-      adminToken,
       title: newTitle,
       content: newContent,
       type: newType,
@@ -550,7 +541,7 @@ function AnnouncementManager({ adminToken }: { adminToken: string }) {
               <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{ann.content}</div>
             </div>
             <button
-              onClick={() => toggleMutation.mutate({ adminToken, id: ann.id, isActive: !ann.isActive })}
+              onClick={() => toggleMutation.mutate({ id: ann.id, isActive: !ann.isActive })}
               className="flex-shrink-0 p-1.5 rounded-lg hover:bg-white/10 transition-colors"
             >
               {ann.isActive ? <Eye size={14} className="text-emerald-400" /> : <EyeOff size={14} className="text-muted-foreground" />}
@@ -563,26 +554,27 @@ function AnnouncementManager({ adminToken }: { adminToken: string }) {
 }
 
 // ─── 主後台頁面 ──────────────────────────────────────────
-const ADMIN_TOKEN_KEY = "haochuang-admin-token";
-
 export default function AdminDashboard() {
-  const [adminToken, setAdminToken] = useState<string | null>(() => {
-    return sessionStorage.getItem(ADMIN_TOKEN_KEY);
-  });
+  const { user, loading, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<"learners" | "chapters" | "questions" | "announcements">("learners");
 
-  const handleLogin = (token: string) => {
-    sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
-    setAdminToken(token);
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center noise-overlay gradient-mesh-bg">
+        <div className="glass-card p-6 text-center text-muted-foreground text-sm">
+          <RefreshCw size={16} className="animate-spin mx-auto mb-2" />
+          驗證身分中...
+        </div>
+      </div>
+    );
+  }
 
-  const handleLogout = () => {
-    sessionStorage.removeItem(ADMIN_TOKEN_KEY);
-    setAdminToken(null);
-  };
+  if (!user) {
+    return <AdminAuthGate mode="login" />;
+  }
 
-  if (!adminToken) {
-    return <AdminLogin onLogin={handleLogin} />;
+  if (user.role !== "admin") {
+    return <AdminAuthGate mode="forbidden" />;
   }
 
   const tabs = [
@@ -607,7 +599,7 @@ export default function AdminDashboard() {
             </div>
           </div>
           <button
-            onClick={handleLogout}
+            onClick={() => { void logout(); }}
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             <LogOut size={14} />
@@ -644,10 +636,10 @@ export default function AdminDashboard() {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
           >
-            {activeTab === "learners" && <LearnersTable adminToken={adminToken} />}
-            {activeTab === "chapters" && <ChapterStats adminToken={adminToken} />}
-            {activeTab === "questions" && <HardQuestions adminToken={adminToken} />}
-            {activeTab === "announcements" && <AnnouncementManager adminToken={adminToken} />}
+            {activeTab === "learners" && <LearnersTable />}
+            {activeTab === "chapters" && <ChapterStats />}
+            {activeTab === "questions" && <HardQuestions />}
+            {activeTab === "announcements" && <AnnouncementManager />}
           </motion.div>
         </AnimatePresence>
       </div>
